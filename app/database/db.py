@@ -1,7 +1,15 @@
 import sqlite3
+from app.config.settings import DATABASE_NAME
+
+
+def get_connection():
+    """Get database connection"""
+    return sqlite3.connect(DATABASE_NAME)
+
 
 def init_db():
-    conn = sqlite3.connect("attendance.db")
+    """Initialize database with all required tables"""
+    conn = sqlite3.connect(DATABASE_NAME)
     c = conn.cursor()
 
     # Employee table
@@ -51,38 +59,6 @@ def init_db():
     )
     """)
 
-    # Leave table
-    c.execute("""
-    CREATE TABLE IF NOT EXISTS Leave_Record (
-        leave_ID INTEGER PRIMARY KEY AUTOINCREMENT,
-        emp_ID INTEGER,
-        job_ID INTEGER,
-        date TEXT,
-        FOREIGN KEY(emp_ID) REFERENCES Employee(employee_ID),
-        FOREIGN KEY(job_ID) REFERENCES Job_Title(job_ID)
-    )
-    """)
-
-    # Attendance Reports
-    c.execute("""
-    CREATE TABLE IF NOT EXISTS Attendance_Report (
-        report_ID INTEGER PRIMARY KEY AUTOINCREMENT,
-        employee_ID INTEGER,
-        job_ID INTEGER,
-        duty_ID INTEGER,
-        total_labor INTEGER,
-        salary INTEGER,
-        date TEXT,
-        FOREIGN KEY(employee_ID) REFERENCES Employee(employee_ID),
-        FOREIGN KEY(job_ID) REFERENCES Job_Title(job_ID),
-        FOREIGN KEY(duty_ID) REFERENCES On_Duty(duty_ID)
-    )
-    """)
-
     conn.commit()
     conn.close()
-
-    print("Database initialized successfully.")
-
-if __name__ == "__main__":
-    init_db()
+    print("Database initialized successfully")

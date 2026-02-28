@@ -1,137 +1,152 @@
-# Face Recognition Attendance System
+# Attendance System
 
-[![Python](https://img.shields.io/badge/Python-3.x-blue.svg)](https://www.python.org/)
-[![OpenCV](https://img.shields.io/badge/OpenCV-4.x-green.svg)](https://opencv.org/)
-[![SQLite](https://img.shields.io/badge/SQLite-3.x-orange.svg)](https://www.sqlite.org/)
-
-An intelligent attendance management system using **Python**, **OpenCV**, and **SQLite**. Employees mark attendance via facial recognition through a laptop webcam. Admins manage employees, capture photos, and monitor attendance logs.
-
-## Table of Contents
-
-- [Features](#features)
-- [Tech Stack](#tech-stack)
-- [Setup Instructions](#setup-instructions)
-- [Project Structure](#project-structure)
-- [Usage](#usage)
-- [Future Enhancements](#future-enhancements)
-- [License](#license)
+A face recognition-based employee attendance system using OpenCV and SQLite.
 
 ## Features
 
-### Admin Functionality
-
-- ‚ûï Add new employees with basic details (name, age)
-- üì∏ Capture multiple face images via webcam
-- üìä View attendance records with employee details
-
-### Employee Functionality
-
-- üîç Scan face using webcam to mark attendance
-- üìù Attendance automatically logged in the database
-
-### Database
-
-- üóÑÔ∏è SQLite database for employees, attendance logs, and admin credentials
-- üîí No external dependencies for storage
-
-### Face Recognition
-
-- ü§ñ Uses OpenCV LBPHFaceRecognizer
-- üì∑ Multiple images per employee for higher accuracy
-- ‚ö° Real-time recognition with webcam
-
-## Tech Stack
-
-- **Python** 3.x
-- **OpenCV** (`cv2`)
-- **SQLite** (`sqlite3`)
-- **Optional GUI**: PySide6 or Tkinter
-
-## Setup Instructions
-
-### 1. Clone the Repository
-
-```bash
-git clone <your-repo-url>
-cd <your-repo-folder>
-```
-
-### 2. Create a Virtual Environment (Recommended)
-
-```bash
-python -m venv venv
-# Activate the environment
-# On Linux/Mac:
-source venv/bin/activate
-# On Windows:
-venv\Scripts\activate
-```
-
-### 3. Install Dependencies
-
-```bash
-pip install opencv-python opencv-contrib-python numpy
-# For GUI (optional)
-pip install PySide6
-```
-
-### 4. Database Setup
-
-The project automatically creates `attendance.db` on first run with the following tables:
-
-- `admin` - Admin credentials
-- `employees` - Employee details
-- `attendance` - Attendance logs
-
-### 5. Run the Application
-
-- Launch the admin login GUI or use the command-line version
-- Admin workflow: Add employees ‚Üí Capture photos ‚Üí Train face recognizer
-- Employee workflow: Scan face ‚Üí Mark attendance
+- **Employee Registration**: Register new employees with face capture
+- **Face Recognition**: Real-time face recognition for attendance marking
+- **Model Training**: Train the recognition model with employee photos
+- **Attendance Tracking**: Automatic attendance marking via face recognition
+- **Modular Architecture**: Clean separation of concerns with services, controllers, and models
 
 ## Project Structure
 
-```
-face-attendance-system/
-‚îÇ
-‚îú‚îÄ‚îÄ employee_photos/          # üìÅ Captured employee face images
-‚îú‚îÄ‚îÄ attendance.db             # üóÑÔ∏è SQLite database
-‚îú‚îÄ‚îÄ main.py                   # üöÄ Main script to run the app
-‚îú‚îÄ‚îÄ capture_photos.py         # üì∏ Capture employee photos
-‚îú‚îÄ‚îÄ train_recognizer.py       # üß† Train face recognizer
-‚îú‚îÄ‚îÄ mark_attendance.py        # ‚úÖ Mark attendance
-‚îî‚îÄ‚îÄ README.md                 # üìñ This file
-```
+\\\
+Attendance_System/
++-- app/                          # Main application package
+¶   +-- __init__.py
+¶   +-- main.py                   # Main entry point with menu
+¶   +-- config/                   # Configuration
+¶   ¶   +-- __init__.py
+¶   ¶   +-- settings.py           # App settings (DB, paths)
+¶   +-- database/                 # Database layer
+¶   ¶   +-- __init__.py
+¶   ¶   +-- db.py                 # Database connection & init
+¶   +-- models/                   # Data models
+¶   ¶   +-- __init__.py
+¶   ¶   +-- employee.py           # Employee model
+¶   +-- services/                 # Business logic
+¶   ¶   +-- __init__.py
+¶   ¶   +-- registration_service.py      # Employee registration
+¶   ¶   +-- face_recognition_service.py  # Face recognition & attendance
+¶   ¶   +-- training_service.py          # Model training
+¶   ¶   +-- attendance_service.py        # Attendance operations
+¶   +-- controllers/              # Request handlers
+¶   ¶   +-- __init__.py
+¶   ¶   +-- registration_controller.py   # Register workflow
+¶   ¶   +-- attendance_controller.py     # Attendance workflow
+¶   ¶   +-- training_controller.py       # Training workflow
+¶   +-- utils/                    # Utilities
+¶       +-- __init__.py
++-- dataset/                      # Employee face photos directory
++-- db/                           # Database files
++-- employee_photos/              # Employee photos storage
++-- models_storage/               # Trained model storage
++-- run.py                        # Main entry point
++-- requirements.txt              # Python dependencies
++-- README.md                     # This file
+\\\
+
+## Prerequisites
+
+- Python 3.7 or higher
+- Webcam/Camera device
+- SQLite3 (included with Python)
+
+## Installation
+
+1. Create a virtual environment:
+   \\\ash
+   python -m venv .venv
+   \\\
+
+2. Activate the virtual environment:
+   - Windows PowerShell:
+     \\\powershell
+     .\\.venv\\Scripts\\Activate.ps1
+     \\\
+   - Windows CMD:
+     \\\cmd
+     .\\.venv\\Scripts\\activate.bat
+     \\\
+   - Linux/Mac:
+     \\\ash
+     source .venv/bin/activate
+     \\\
+
+3. Install dependencies:
+   \\\ash
+   pip install -r requirements.txt
+   \\\
 
 ## Usage
 
-### 1. Add Employee (Admin)
+1. Run the application:
+   \\\ash
+   python run.py
+   \\\
 
-- Provide employee name and age
-- Capture 20 face photos via webcam for training
+2. Follow the menu:
+   - **Option 1**: Register a new employee
+     - Enter employee details (name, age, email, etc.)
+     - Capture face samples (30 images per employee)
+   
+   - **Option 2**: Train the model
+     - Trains face recognizer with all captured photos
+     - Saves model as \models_storage/trainer.yml\
+   
+   - **Option 3**: Mark attendance
+     - Starts real-time face recognition
+     - Automatically marks attendance for recognized employees
+     - Press ESC to exit
 
-### 2. Train Recognizer
+## Module Descriptions
 
-- Run `train_recognizer.py` after adding employees
-- Generates `face_trainer.yml` for recognition
+### Services
+- **registration_service.py**: Employee registration and face capture
+- **face_recognition_service.py**: Face recognition and attendance marking
+- **training_service.py**: LBPH face recognizer model training
+- **attendance_service.py**: Attendance database operations
 
-### 3. Mark Attendance (Employee)
+### Controllers
+- **registration_controller.py**: Registration workflow management
+- **attendance_controller.py**: Attendance marking workflow
+- **training_controller.py**: Model training workflow
 
-- Execute `mark_attendance.py`
-- Face scan triggers automatic attendance logging
+### Database
+- **db.py**: Database initialization and connection
+- Tables: Employee, Department, Job_Title, On_Duty
 
-### 4. View Attendance (Admin)
+### Configuration
+- **settings.py**: Centralized app configuration
 
-- Query the database or use GUI for attendance history
+## Key Improvements
 
-## Future Enhancements
+? Modular architecture (services, controllers, models)
+? Centralized configuration management
+? Proper package structure with \__init__.py\
+? Clean separation of concerns
+? Comprehensive error handling
+? Clear documentation
 
-- üîÑ Replace LBPH with advanced Face Recognition library for better accuracy
-- üñ•Ô∏è Implement GUI for both Admin and Employee interfaces
-- üìà Export attendance logs to CSV or Excel
-- üë• Enable multi-face detection
-- üîê Add password hashing for Admin login security
+## Notes
 
-## License
+- Minimum 5-8 employees needed for best accuracy
+- Each employee should have 20-30 face samples
+- Confidence threshold: 60 (adjustable)
+- Database file: \ttendance.db\
+- Trained model: \models_storage/trainer.yml\
 
-This project is open-source and free to use for learning purposes. üìö
+## Troubleshooting
+
+- **Camera not detected**: Ensure webcam is connected
+- **"Unknown" faces**: Retrain model with better lighting
+- **Module errors**: Run from project root directory
+- **Database locked**: Close other app instances
+
+## Dependencies
+
+- opencv-python: Image processing
+- opencv-contrib-python: LBPH recognizer
+- numpy: Numerical operations
