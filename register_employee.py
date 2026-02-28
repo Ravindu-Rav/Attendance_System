@@ -81,3 +81,9 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+#add employee to database
+
+#capture face images
+
+#store them in the dataset folder
