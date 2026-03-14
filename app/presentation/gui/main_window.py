@@ -48,7 +48,6 @@ class MainWindow(QMainWindow):
         self.dashboard_button.clicked.connect(self._open_dashboard)
         self.employee_button.clicked.connect(self._open_employee_management)
         self.attendance_button.clicked.connect(self._open_attendance)
-        self.training_button.clicked.connect(self._open_training)
         self.logout_button.clicked.connect(self._logout)
 
     def _open_dashboard(self):
@@ -70,13 +69,6 @@ class MainWindow(QMainWindow):
         from .attendance_window import AttendanceWindow
         self.attendance_window = AttendanceWindow()
         self.attendance_window.show()
-        self.close()
-
-    def _open_training(self):
-        """Open training window"""
-        from .training_window import TrainingWindow
-        self.training_window = TrainingWindow()
-        self.training_window.show()
         self.close()
 
     def _logout(self):
@@ -132,11 +124,6 @@ class MainWindow(QMainWindow):
         self.attendance_button.setCursor(QCursor(Qt.PointingHandCursor))
         self.attendance_button.setObjectName("menuButton")
         card_layout.addWidget(self.attendance_button)
-
-        self.training_button = QPushButton("Train Model")
-        self.training_button.setCursor(QCursor(Qt.PointingHandCursor))
-        self.training_button.setObjectName("menuButton")
-        card_layout.addWidget(self.training_button)
 
         self.logout_button = QPushButton("Logout")
         self.logout_button.setCursor(QCursor(Qt.PointingHandCursor))

@@ -11,16 +11,108 @@ from PySide6.QtWidgets import (
     QGraphicsDropShadowEffect,
     QListWidget,
     QListWidgetItem,
+    QMessageBox,
+    QProgressBar,
+    QTextEdit,
 )
 from PySide6.QtGui import QColor, QCursor
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QThread, Signal
+import sys
+import os
+import cv2
+import numpy as np
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+from app.database.db import get_connection
+from app.services.registration_service import add_employee, capture_faces
+from app.services.training_service import train_model
+
+
+class FaceCaptureThread(QThread):
+    """Thread for capturing faces"""
+    progress = Signal(str)
+    finished = Signal(bool, str)
+
+    def __init__(self, employee_id, num_samples=30):
+        super().__init__()
+        self.employee_id = employee_id
+        self.num_samples = num_samples
+
+    def run(self):
+        """Run face capture in thread"""
+        try:
+            self.progress.emit("Initializing camera...")
+            dataset_path = os.path.join("dataset", str(self.employee_id))
+            os.makedirs(dataset_path, exist_ok=True)
+
+            face_detector = cv2.CascadeClassifier(
+                cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
+            )
+
+            cam = cv2.VideoCapture(0)
+            count = 0
+
+            self.progress.emit(f"Capturing {self.num_samples} face samples...")
+
+            while count < self.num_samples:
+                ret, img = cam.read()
+                if not ret:
+                    self.finished.emit(False, "Failed to capture frame from camera")
+                    return
+
+                gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+                faces = face_detector.detectMultiScale(gray, 1.3, 5)
+
+                for (x, y, w, h) in faces:
+                    if count < self.num_samples:
+                        count += 1
+                        face = gray[y:y+h, x:x+w]
+                        file_path = os.path.join(dataset_path, f"{count}.jpg")
+                        cv2.imwrite(file_path, face)
+                        cv2.rectangle(img, (x, y), (x+w, y+h), (255, 0, 0), 2)
+                        cv2.putText(img, f"Samples: {count}/{self.num_samples}", (10, 30),
+                                    cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+                        self.progress.emit(f"Captured sample {count}/{self.num_samples}")
+                        break  # Capture one face per frame
+
+                cv2.imshow("Capturing Faces - Press ESC to cancel", img)
+
+                if cv2.waitKey(1) == 27:  # ESC key
+                    cam.release()
+                    cv2.destroyAllWindows()
+                    self.finished.emit(False, "Capture cancelled by user")
+                    return
+
+            cam.release()
+            cv2.destroyAllWindows()
+            self.finished.emit(True, f"Successfully captured {count} face samples")
+
+        except Exception as e:
+            self.finished.emit(False, str(e))
+
+
+class ModelTrainingThread(QThread):
+    """Thread for training model"""
+    progress = Signal(str)
+    finished = Signal(bool, str)
+
+    def run(self):
+        """Run training in thread"""
+        try:
+            self.progress.emit("Loading training data...")
+            result = train_model()
+            if result:
+                self.finished.emit(True, "Model training completed successfully!")
+            else:
+                self.finished.emit(False, "No training data found. Please capture faces for employees first.")
+        except Exception as e:
+            self.finished.emit(False, str(e))
 
 
 class EmployeeWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Attendance System — Manage Employees")
-        self.setFixedSize(600, 600)
+        self.setFixedSize(700, 700)
 
         self.setAttribute(Qt.WA_TranslucentBackground)
 
@@ -29,6 +121,17 @@ class EmployeeWindow(QMainWindow):
 
         self._build_ui()
         self._apply_styles()
+        self._connect_signals()
+        self._load_employees()
+
+    def _connect_signals(self):
+        """Connect button signals"""
+        self.add_button.clicked.connect(self._add_employee)
+        self.edit_button.clicked.connect(self._edit_employee)
+        self.delete_button.clicked.connect(self._delete_employee)
+        self.capture_button.clicked.connect(self._capture_faces)
+        self.back_button.clicked.connect(self._back_to_main)
+        self.employee_list.itemSelectionChanged.connect(self._on_employee_selected)
 
     def _build_ui(self):
         main_layout = QVBoxLayout(self.central_widget)
@@ -97,6 +200,36 @@ class EmployeeWindow(QMainWindow):
         form_layout.addLayout(button_layout)
         card_layout.addLayout(form_layout)
 
+        # Face Capture and Training Section
+        capture_layout = QVBoxLayout()
+        capture_layout.setSpacing(10)
+
+        # Progress Bar
+        self.progress_bar = QProgressBar()
+        self.progress_bar.setObjectName("progressBar")
+        self.progress_bar.setRange(0, 0)  # Indeterminate progress
+        self.progress_bar.setVisible(False)
+        capture_layout.addWidget(self.progress_bar)
+
+        # Status Text
+        self.status_text = QTextEdit()
+        self.status_text.setObjectName("statusText")
+        self.status_text.setReadOnly(True)
+        self.status_text.setFixedHeight(80)
+        self.status_text.setVisible(False)
+        capture_layout.addWidget(self.status_text)
+
+        # Capture and Train Buttons
+        action_layout = QHBoxLayout()
+        self.capture_button = QPushButton("Capture Faces for Selected Employee")
+        self.capture_button.setCursor(QCursor(Qt.PointingHandCursor))
+        self.capture_button.setObjectName("captureButton")
+        self.capture_button.setEnabled(False)  # Disabled until employee selected
+        action_layout.addWidget(self.capture_button)
+
+        capture_layout.addLayout(action_layout)
+        card_layout.addLayout(capture_layout)
+
         # Back Button
         self.back_button = QPushButton("Back to Main Menu")
         self.back_button.setCursor(QCursor(Qt.PointingHandCursor))
@@ -114,6 +247,191 @@ class EmployeeWindow(QMainWindow):
         self.main_window = MainWindow()
         self.main_window.show()
         self.close()
+
+    def _load_employees(self):
+        """Load employees from database"""
+        self.employee_list.clear()
+        try:
+            conn = get_connection()
+            c = conn.cursor()
+            c.execute("SELECT employee_ID, fname, lname FROM Employee")
+            employees = c.fetchall()
+            conn.close()
+
+            for emp in employees:
+                self.employee_list.addItem(f"{emp[1]} {emp[2]} - ID: {emp[0]}")
+        except Exception as e:
+            QMessageBox.warning(self, "Error", f"Failed to load employees: {str(e)}")
+
+    def _add_employee(self):
+        """Add new employee"""
+        name = self.name_input.text().strip()
+        emp_id = self.id_input.text().strip()
+
+        if not name or not emp_id:
+            QMessageBox.warning(self, "Error", "Please enter both name and ID")
+            return
+
+        try:
+            # For simplicity, using basic employee creation
+            # In real app, you'd have more fields
+            conn = get_connection()
+            c = conn.cursor()
+            c.execute("INSERT INTO Employee (employee_ID, fname, lname) VALUES (?, ?, ?)",
+                     (int(emp_id), name.split()[0], ' '.join(name.split()[1:])))
+            conn.commit()
+            conn.close()
+
+            QMessageBox.information(self, "Success", f"Employee {name} added successfully!")
+            self.name_input.clear()
+            self.id_input.clear()
+            self._load_employees()
+
+            # Automatically start face capture for the new employee
+            reply = QMessageBox.question(self, "Face Capture",
+                                       f"Do you want to capture faces for {name} now?",
+                                       QMessageBox.Yes | QMessageBox.No)
+
+            if reply == QMessageBox.Yes:
+                self._capture_faces_for_employee(int(emp_id))
+
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Failed to add employee: {str(e)}")
+
+    def _edit_employee(self):
+        """Edit selected employee"""
+        current_item = self.employee_list.currentItem()
+        if not current_item:
+            QMessageBox.warning(self, "Error", "Please select an employee to edit")
+            return
+
+        # Parse employee ID from text
+        text = current_item.text()
+        emp_id = text.split("ID: ")[1]
+
+        new_name = self.name_input.text().strip()
+        if not new_name:
+            QMessageBox.warning(self, "Error", "Please enter new name")
+            return
+
+        try:
+            conn = get_connection()
+            c = conn.cursor()
+            c.execute("UPDATE Employee SET fname = ?, lname = ? WHERE employee_ID = ?",
+                     (new_name.split()[0], ' '.join(new_name.split()[1:]), emp_id))
+            conn.commit()
+            conn.close()
+
+            QMessageBox.information(self, "Success", "Employee updated successfully!")
+            self._load_employees()
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Failed to update employee: {str(e)}")
+
+    def _delete_employee(self):
+        """Delete selected employee"""
+        current_item = self.employee_list.currentItem()
+        if not current_item:
+            QMessageBox.warning(self, "Error", "Please select an employee to delete")
+            return
+
+        text = current_item.text()
+        emp_id = text.split("ID: ")[1]
+
+        reply = QMessageBox.question(self, "Confirm Delete",
+                                   f"Are you sure you want to delete employee {text}?",
+                                   QMessageBox.Yes | QMessageBox.No)
+
+        if reply == QMessageBox.Yes:
+            try:
+                conn = get_connection()
+                c = conn.cursor()
+                c.execute("DELETE FROM Employee WHERE employee_ID = ?", (emp_id,))
+                conn.commit()
+                conn.close()
+
+                QMessageBox.information(self, "Success", "Employee deleted successfully!")
+                self._load_employees()
+                self.capture_button.setEnabled(False)
+            except Exception as e:
+                QMessageBox.critical(self, "Error", f"Failed to delete employee: {str(e)}")
+
+    def _capture_faces_for_employee(self, emp_id):
+        """Capture faces for a specific employee ID"""
+        self.progress_bar.setVisible(True)
+        self.status_text.setVisible(True)
+        self.status_text.clear()
+
+        self.capture_thread = FaceCaptureThread(emp_id)
+        self.capture_thread.progress.connect(self._update_capture_progress)
+        self.capture_thread.finished.connect(self._capture_finished_and_train)
+        self.capture_thread.start()
+
+    def _capture_faces(self):
+        """Capture faces for selected employee"""
+        current_item = self.employee_list.currentItem()
+        if not current_item:
+            QMessageBox.warning(self, "Error", "Please select an employee first")
+            return
+
+        text = current_item.text()
+        emp_id = int(text.split("ID: ")[1])
+
+        reply = QMessageBox.question(self, "Face Capture",
+                                   f"Do you want to capture faces for {text}?",
+                                   QMessageBox.Yes | QMessageBox.No)
+
+        if reply == QMessageBox.Yes:
+            self._capture_faces_for_employee(emp_id)
+
+    def _train_model(self):
+        """Train the face recognition model"""
+        self.progress_bar.setVisible(True)
+        self.status_text.setVisible(True)
+        self.status_text.clear()
+        self.train_button.setEnabled(False)
+
+        self.train_thread = ModelTrainingThread()
+        self.train_thread.progress.connect(self._update_train_progress)
+        self.train_thread.finished.connect(self._train_finished)
+        self.train_thread.start()
+
+    def _update_capture_progress(self, text):
+        """Update capture progress"""
+        self.status_text.append(text)
+
+    def _capture_finished_and_train(self, success, message):
+        """Handle capture completion and start training"""
+        if success:
+            QMessageBox.information(self, "Success", message + "\n\nStarting model training...")
+            self._start_training()
+        else:
+            QMessageBox.warning(self, "Error", message)
+            self.progress_bar.setVisible(False)
+
+    def _start_training(self):
+        """Start the training process"""
+        self.status_text.append("Starting model training...")
+
+        self.train_thread = ModelTrainingThread()
+        self.train_thread.progress.connect(self._update_train_progress)
+        self.train_thread.finished.connect(self._training_completed)
+        self.train_thread.start()
+
+    def _update_train_progress(self, text):
+        """Update training progress"""
+        self.status_text.append(text)
+
+    def _training_completed(self, success, message):
+        """Handle training completion"""
+        self.progress_bar.setVisible(False)
+        if success:
+            QMessageBox.information(self, "Success", message)
+        else:
+            QMessageBox.warning(self, "Error", message)
+
+    def _on_employee_selected(self):
+        """Enable capture button when employee is selected"""
+        self.capture_button.setEnabled(self.employee_list.currentItem() is not None)
 
     def _apply_styles(self):
         self.setStyleSheet("""
@@ -215,22 +533,48 @@ class EmployeeWindow(QMainWindow):
             background-color: #cc3333;
         }
 
-        /* Back Button */
-        QPushButton#backButton {
-            background-color: #444;
+        /* Progress Bar */
+        QProgressBar#progressBar {
+            border: 2px solid #444;
+            border-radius: 5px;
+            text-align: center;
+        }
+
+        QProgressBar#progressBar::chunk {
+            background-color: #00c6ff;
+        }
+
+        /* Status Text */
+        QTextEdit#statusText {
+            background-color: #2b2b2b;
+            border-radius: 5px;
+            padding: 5px;
             color: white;
-            padding: 12px;
-            border-radius: 12px;
-            font-size: 16px;
+            font-family: monospace;
+            font-size: 11px;
+        }
+
+        /* Capture Button */
+        QPushButton#captureButton {
+            background-color: #ffa500;
+            color: black;
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 12px;
             font-weight: bold;
         }
 
-        QPushButton#backButton:hover {
-            background-color: #555;
+        QPushButton#captureButton:hover {
+            background-color: #e69500;
         }
 
-        QPushButton#backButton:pressed {
+        QPushButton#captureButton:pressed {
+            background-color: #cc8400;
+        }
+
+        QPushButton#captureButton:disabled {
             background-color: #666;
+            color: #ccc;
         }
         """)
 
