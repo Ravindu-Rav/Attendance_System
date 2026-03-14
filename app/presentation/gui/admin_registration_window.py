@@ -9,19 +9,21 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QFrame,
     QGraphicsDropShadowEffect,
+    QMessageBox,
 )
 from PySide6.QtGui import QColor, QCursor
 from PySide6.QtCore import Qt
 import sys
 import os
+import hashlib
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 from app.database.db import get_connection
 
 
-class LoginWindow(QMainWindow):
+class AdminRegistrationWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Attendance System — Login")
+        self.setWindowTitle("Attendance System — Admin Registration")
         self.setFixedSize(420, 560)
 
         self.setAttribute(Qt.WA_TranslucentBackground)
@@ -35,48 +37,51 @@ class LoginWindow(QMainWindow):
 
     def _connect_signals(self):
         """Connect button and link signals"""
-        self.login_button.clicked.connect(self._handle_login)
-        self.register_label.linkActivated.connect(self._handle_register_admin)
+        self.register_button.clicked.connect(self._handle_register)
+        self.back_label.linkActivated.connect(self._handle_back_to_login)
 
-    def _handle_login(self):
-        """Handle login button click"""
+    def _handle_register(self):
+        """Handle register button click"""
         username = self.username_input.text().strip()
         password = self.password_input.text().strip()
+        confirm_password = self.confirm_password_input.text().strip()
         
         if not username or not password:
-            # For now, just print. In real app, show message box
-            print("Please enter username and password")
+            QMessageBox.warning(self, "Error", "Username and password cannot be empty.")
             return
         
-        # Check credentials
-        import hashlib
-        hashed_password = hashlib.sha256(password.encode()).hexdigest()
+        if password != confirm_password:
+            QMessageBox.warning(self, "Error", "Passwords do not match.")
+            return
         
+        # Check if admin already exists
         conn = get_connection()
         c = conn.cursor()
-        c.execute("SELECT * FROM Admin WHERE username = ? AND password = ?", (username, hashed_password))
-        admin = c.fetchone()
-        conn.close()
+        c.execute("SELECT COUNT(*) FROM Admin")
+        if c.fetchone()[0] > 0:
+            QMessageBox.warning(self, "Error", "Admin account already exists.")
+            conn.close()
+            return
         
-        if admin:
-            print("Login successful!")
-            self._open_main_window()
-        else:
-            print("Invalid credentials")
+        # Hash password
+        hashed_password = hashlib.sha256(password.encode()).hexdigest()
+        
+        try:
+            c.execute("INSERT INTO Admin (username, password) VALUES (?, ?)", (username, hashed_password))
+            conn.commit()
+            QMessageBox.information(self, "Success", f"Admin account '{username}' created successfully!")
+            self._handle_back_to_login()  # Go back to login
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Error creating admin account: {str(e)}")
+        finally:
+            conn.close()
 
-    def _open_main_window(self):
-        """Open main window after successful login"""
-        from main_window import MainWindow
-        self.main_window = MainWindow()
-        self.main_window.show()
+    def _handle_back_to_login(self):
+        """Handle back to login link click"""
+        from login_window import LoginWindow
+        self.login_window = LoginWindow()
+        self.login_window.show()
         self.close()
-
-    def _handle_register_admin(self):
-        """Handle register admin link click"""
-        from admin_registration_window import AdminRegistrationWindow
-        self.register_window = AdminRegistrationWindow()
-        self.register_window.show()
-        self.hide()  # Hide login window
 
     def _build_ui(self):
         main_layout = QVBoxLayout(self.central_widget)
@@ -99,19 +104,19 @@ class LoginWindow(QMainWindow):
         card_layout.setSpacing(25)
 
         # Title
-        self.title = QLabel("Attendance System")
+        self.title = QLabel("Admin Registration")
         self.title.setObjectName("title")
         self.title.setAlignment(Qt.AlignCenter)
         card_layout.addWidget(self.title)
 
-        self.subtitle = QLabel("Welcome back! Please login")
+        self.subtitle = QLabel("Create the first admin account")
         self.subtitle.setObjectName("subtitle")
         self.subtitle.setAlignment(Qt.AlignCenter)
         card_layout.addWidget(self.subtitle)
 
         # Username
         self.username_input = QLineEdit()
-        self.username_input.setPlaceholderText("Username or Email")
+        self.username_input.setPlaceholderText("Username")
         self.username_input.setObjectName("input")
         card_layout.addWidget(self.username_input)
 
@@ -122,56 +127,35 @@ class LoginWindow(QMainWindow):
         self.password_input.setObjectName("input")
         card_layout.addWidget(self.password_input)
 
-        # Login Button
-        self.login_button = QPushButton("LOGIN")
-        self.login_button.setCursor(QCursor(Qt.PointingHandCursor))
-        self.login_button.setObjectName("loginButton")
-        card_layout.addWidget(self.login_button)
+        # Confirm Password
+        self.confirm_password_input = QLineEdit()
+        self.confirm_password_input.setPlaceholderText("Confirm Password")
+        self.confirm_password_input.setEchoMode(QLineEdit.Password)
+        self.confirm_password_input.setObjectName("input")
+        card_layout.addWidget(self.confirm_password_input)
 
-        # Forgot password
-        forgot_layout = QHBoxLayout()
-        forgot_layout.addStretch()
+        # Register Button
+        self.register_button = QPushButton("REGISTER ADMIN")
+        self.register_button.setCursor(QCursor(Qt.PointingHandCursor))
+        self.register_button.setObjectName("registerButton")
+        card_layout.addWidget(self.register_button)
 
-        self.forgot_label = QLabel("<a href='#'>Forgot Password?</a>")
-        self.forgot_label.setObjectName("link")
-        self.forgot_label.setTextFormat(Qt.RichText)
-        self.forgot_label.setTextInteractionFlags(Qt.TextBrowserInteraction)
-        self.forgot_label.setOpenExternalLinks(False)
-        forgot_layout.addWidget(self.forgot_label)
+        # Back to Login
+        back_layout = QHBoxLayout()
+        back_layout.addStretch()
 
-        card_layout.addLayout(forgot_layout)
+        self.back_label = QLabel("<a href='#'>Back to Login</a>")
+        self.back_label.setObjectName("link")
+        self.back_label.setTextFormat(Qt.RichText)
+        self.back_label.setTextInteractionFlags(Qt.TextBrowserInteraction)
+        self.back_label.setOpenExternalLinks(False)
+        back_layout.addWidget(self.back_label)
 
-        # Register Admin (if no admin exists)
-        if self._admin_exists():
-            pass  # Don't show if admin exists
-        else:
-            register_layout = QHBoxLayout()
-            register_layout.addStretch()
-
-            self.register_label = QLabel("<a href='#'>Register Admin</a>")
-            self.register_label.setObjectName("link")
-            self.register_label.setTextFormat(Qt.RichText)
-            self.register_label.setTextInteractionFlags(Qt.TextBrowserInteraction)
-            self.register_label.setOpenExternalLinks(False)
-            register_layout.addWidget(self.register_label)
-
-            card_layout.addLayout(register_layout)
+        card_layout.addLayout(back_layout)
 
         main_layout.addStretch()
         main_layout.addWidget(self.card)
         main_layout.addStretch()
-
-    def _admin_exists(self):
-        """Check if any admin accounts exist"""
-        try:
-            conn = get_connection()
-            c = conn.cursor()
-            c.execute("SELECT COUNT(*) FROM Admin")
-            count = c.fetchone()[0]
-            conn.close()
-            return count > 0
-        except:
-            return False
 
     def _apply_styles(self):
         self.setStyleSheet("""
@@ -220,8 +204,8 @@ class LoginWindow(QMainWindow):
             background-color: #333;
         }
 
-        /* Login Button */
-        QPushButton#loginButton {
+        /* Register Button */
+        QPushButton#registerButton {
             background-color: #00c6ff;
             color: black;
             padding: 12px;
@@ -230,11 +214,11 @@ class LoginWindow(QMainWindow):
             font-weight: bold;
         }
 
-        QPushButton#loginButton:hover {
+        QPushButton#registerButton:hover {
             background-color: #00a6d6;
         }
 
-        QPushButton#loginButton:pressed {
+        QPushButton#registerButton:pressed {
             background-color: #008bb5;
         }
 
@@ -257,6 +241,6 @@ class LoginWindow(QMainWindow):
 if __name__ == "__main__":
     import sys
     app = QApplication(sys.argv)
-    window = LoginWindow()
+    window = AdminRegistrationWindow()
     window.show()
     sys.exit(app.exec())

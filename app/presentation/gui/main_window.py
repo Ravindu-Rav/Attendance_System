@@ -13,6 +13,21 @@ from PySide6.QtGui import QColor, QCursor
 from PySide6.QtCore import Qt
 
 
+from PySide6.QtWidgets import (
+    QApplication,
+    QMainWindow,
+    QWidget,
+    QLabel,
+    QPushButton,
+    QVBoxLayout,
+    QHBoxLayout,
+    QFrame,
+    QGraphicsDropShadowEffect,
+)
+from PySide6.QtGui import QColor, QCursor
+from PySide6.QtCore import Qt
+
+
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -26,6 +41,50 @@ class MainWindow(QMainWindow):
 
         self._build_ui()
         self._apply_styles()
+        self._connect_signals()
+
+    def _connect_signals(self):
+        """Connect button signals"""
+        self.dashboard_button.clicked.connect(self._open_dashboard)
+        self.employee_button.clicked.connect(self._open_employee_management)
+        self.attendance_button.clicked.connect(self._open_attendance)
+        self.training_button.clicked.connect(self._open_training)
+        self.logout_button.clicked.connect(self._logout)
+
+    def _open_dashboard(self):
+        """Open dashboard window"""
+        from dashboard_window import DashboardWindow
+        self.dashboard_window = DashboardWindow()
+        self.dashboard_window.show()
+        self.close()
+
+    def _open_employee_management(self):
+        """Open employee management window"""
+        from employee_window import EmployeeWindow
+        self.employee_window = EmployeeWindow()
+        self.employee_window.show()
+        self.close()
+
+    def _open_attendance(self):
+        """Open attendance window"""
+        from attendance_window import AttendanceWindow
+        self.attendance_window = AttendanceWindow()
+        self.attendance_window.show()
+        self.close()
+
+    def _open_training(self):
+        """Open training window"""
+        from training_window import TrainingWindow
+        self.training_window = TrainingWindow()
+        self.training_window.show()
+        self.close()
+
+    def _logout(self):
+        """Logout and return to login"""
+        from login_window import LoginWindow
+        self.login_window = LoginWindow()
+        self.login_window.show()
+        self.close()
 
     def _build_ui(self):
         main_layout = QVBoxLayout(self.central_widget)
@@ -73,6 +132,11 @@ class MainWindow(QMainWindow):
         self.attendance_button.setCursor(QCursor(Qt.PointingHandCursor))
         self.attendance_button.setObjectName("menuButton")
         card_layout.addWidget(self.attendance_button)
+
+        self.training_button = QPushButton("Train Model")
+        self.training_button.setCursor(QCursor(Qt.PointingHandCursor))
+        self.training_button.setObjectName("menuButton")
+        card_layout.addWidget(self.training_button)
 
         self.logout_button = QPushButton("Logout")
         self.logout_button.setCursor(QCursor(Qt.PointingHandCursor))

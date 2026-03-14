@@ -26,6 +26,16 @@ def init_db():
     )
     """)
 
+    # Admin table
+    c.execute("""
+    CREATE TABLE IF NOT EXISTS Admin (
+        admin_ID INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT UNIQUE NOT NULL,
+        password TEXT NOT NULL,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP
+    )
+    """)
+
     # Department table
     c.execute("""
     CREATE TABLE IF NOT EXISTS Department (

@@ -99,11 +99,19 @@ class DashboardWindow(QMainWindow):
         self.back_button = QPushButton("Back to Main Menu")
         self.back_button.setCursor(QCursor(Qt.PointingHandCursor))
         self.back_button.setObjectName("backButton")
+        self.back_button.clicked.connect(self._back_to_main)
         card_layout.addWidget(self.back_button)
 
         main_layout.addStretch()
         main_layout.addWidget(self.card)
         main_layout.addStretch()
+
+    def _back_to_main(self):
+        """Go back to main menu"""
+        from main_window import MainWindow
+        self.main_window = MainWindow()
+        self.main_window.show()
+        self.close()
 
     def _apply_styles(self):
         self.setStyleSheet("""
