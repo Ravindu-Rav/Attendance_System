@@ -12,13 +12,15 @@ from PySide6.QtWidgets import (
     QMessageBox,
 )
 from PySide6.QtGui import QColor, QCursor
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, Signal
 import sys
 import os
 import hashlib
 
 
 class AdminRegistrationWindow(QMainWindow):
+    closed = Signal()
+
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Attendance System — Admin Registration")
@@ -57,6 +59,10 @@ class AdminRegistrationWindow(QMainWindow):
     def _handle_back_to_login(self):
         """Handle back to login link click"""
         self.close()
+
+    def closeEvent(self, event):
+        self.closed.emit()
+        super().closeEvent(event)
 
     def _build_ui(self):
         main_layout = QVBoxLayout(self.central_widget)

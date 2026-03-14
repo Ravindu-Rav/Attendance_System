@@ -24,6 +24,7 @@ class LoginWindow(QMainWindow):
         self.setAttribute(Qt.WA_TranslucentBackground)
 
         self.setWindowFlags(Qt.Window)
+        self.setWindowState(Qt.WindowMaximized)
 
         self.central_widget = QWidget()
         self.central_widget.setObjectName("centralWidget")
@@ -66,7 +67,14 @@ class LoginWindow(QMainWindow):
         from .admin_registration_window import AdminRegistrationWindow
         self.admin_reg_window = AdminRegistrationWindow()
         self.admin_reg_window.setWindowModality(Qt.ApplicationModal)
-        self.admin_reg_window.show()
+        self.admin_reg_window.closed.connect(self._show_login_from_register)
+        self.admin_reg_window.showMaximized()
+        self.hide()
+
+    def _show_login_from_register(self):
+        self.showMaximized()
+        self.raise_()
+        self.activateWindow()
 
     def _build_ui(self):
         main_layout = QVBoxLayout(self.central_widget)
