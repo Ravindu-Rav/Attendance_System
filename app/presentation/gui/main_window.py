@@ -53,35 +53,35 @@ class MainWindow(QMainWindow):
 
     def _open_dashboard(self):
         """Open dashboard window"""
-        from dashboard_window import DashboardWindow
+        from .dashboard_window import DashboardWindow
         self.dashboard_window = DashboardWindow()
         self.dashboard_window.show()
         self.close()
 
     def _open_employee_management(self):
         """Open employee management window"""
-        from employee_window import EmployeeWindow
+        from .employee_window import EmployeeWindow
         self.employee_window = EmployeeWindow()
         self.employee_window.show()
         self.close()
 
     def _open_attendance(self):
         """Open attendance window"""
-        from attendance_window import AttendanceWindow
+        from .attendance_window import AttendanceWindow
         self.attendance_window = AttendanceWindow()
         self.attendance_window.show()
         self.close()
 
     def _open_training(self):
         """Open training window"""
-        from training_window import TrainingWindow
+        from .training_window import TrainingWindow
         self.training_window = TrainingWindow()
         self.training_window.show()
         self.close()
 
     def _logout(self):
         """Logout and return to login"""
-        from login_window import LoginWindow
+        from .login_window import LoginWindow
         self.login_window = LoginWindow()
         self.login_window.show()
         self.close()

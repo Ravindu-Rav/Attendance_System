@@ -14,6 +14,7 @@ from PySide6.QtGui import QColor, QCursor
 from PySide6.QtCore import Qt
 import sys
 import os
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 from app.database.db import get_connection
 
@@ -34,30 +35,25 @@ class LoginWindow(QMainWindow):
         self._connect_signals()
 
     def _connect_signals(self):
-        """Connect button and link signals"""
         self.login_button.clicked.connect(self._handle_login)
-        self.register_label.linkActivated.connect(self._handle_register_admin)
 
     def _handle_login(self):
-        """Handle login button click"""
         username = self.username_input.text().strip()
         password = self.password_input.text().strip()
-        
+
         if not username or not password:
-            # For now, just print. In real app, show message box
             print("Please enter username and password")
             return
-        
-        # Check credentials
+
         import hashlib
         hashed_password = hashlib.sha256(password.encode()).hexdigest()
-        
+
         conn = get_connection()
         c = conn.cursor()
         c.execute("SELECT * FROM Admin WHERE username = ? AND password = ?", (username, hashed_password))
         admin = c.fetchone()
         conn.close()
-        
+
         if admin:
             print("Login successful!")
             self._open_main_window()
@@ -65,28 +61,24 @@ class LoginWindow(QMainWindow):
             print("Invalid credentials")
 
     def _open_main_window(self):
-        """Open main window after successful login"""
-        from main_window import MainWindow
+        from .main_window import MainWindow
         self.main_window = MainWindow()
         self.main_window.show()
         self.close()
 
     def _handle_register_admin(self):
-        """Handle register admin link click"""
-        from admin_registration_window import AdminRegistrationWindow
+        from .admin_registration_window import AdminRegistrationWindow
         self.register_window = AdminRegistrationWindow()
         self.register_window.show()
-        self.hide()  # Hide login window
+        self.hide()
 
     def _build_ui(self):
         main_layout = QVBoxLayout(self.central_widget)
         main_layout.setContentsMargins(20, 20, 20, 20)
 
-        # Card container
         self.card = QFrame()
         self.card.setObjectName("card")
 
-        # Drop shadow
         shadow = QGraphicsDropShadowEffect()
         shadow.setBlurRadius(40)
         shadow.setXOffset(0)
@@ -98,7 +90,6 @@ class LoginWindow(QMainWindow):
         card_layout.setContentsMargins(40, 50, 40, 40)
         card_layout.setSpacing(25)
 
-        # Title
         self.title = QLabel("Attendance System")
         self.title.setObjectName("title")
         self.title.setAlignment(Qt.AlignCenter)
@@ -109,26 +100,39 @@ class LoginWindow(QMainWindow):
         self.subtitle.setAlignment(Qt.AlignCenter)
         card_layout.addWidget(self.subtitle)
 
-        # Username
         self.username_input = QLineEdit()
         self.username_input.setPlaceholderText("Username or Email")
         self.username_input.setObjectName("input")
         card_layout.addWidget(self.username_input)
 
-        # Password
         self.password_input = QLineEdit()
         self.password_input.setPlaceholderText("Password")
         self.password_input.setEchoMode(QLineEdit.Password)
         self.password_input.setObjectName("input")
         card_layout.addWidget(self.password_input)
 
-        # Login Button
         self.login_button = QPushButton("LOGIN")
         self.login_button.setCursor(QCursor(Qt.PointingHandCursor))
         self.login_button.setObjectName("loginButton")
         card_layout.addWidget(self.login_button)
 
-        # Forgot password
+        # Create account link (only if admin doesn't exist)
+        if not self._admin_exists():
+            register_layout = QHBoxLayout()
+            register_layout.setAlignment(Qt.AlignCenter)
+
+            self.register_label = QLabel(
+                "Don't have an account? <a href='#'>Create one</a>"
+            )
+            self.register_label.setObjectName("registerLink")
+            self.register_label.setTextFormat(Qt.RichText)
+            self.register_label.setTextInteractionFlags(Qt.TextBrowserInteraction)
+            self.register_label.setOpenExternalLinks(False)
+            self.register_label.linkActivated.connect(self._handle_register_admin)
+
+            register_layout.addWidget(self.register_label)
+            card_layout.addLayout(register_layout)
+
         forgot_layout = QHBoxLayout()
         forgot_layout.addStretch()
 
@@ -141,28 +145,11 @@ class LoginWindow(QMainWindow):
 
         card_layout.addLayout(forgot_layout)
 
-        # Register Admin (if no admin exists)
-        if self._admin_exists():
-            pass  # Don't show if admin exists
-        else:
-            register_layout = QHBoxLayout()
-            register_layout.addStretch()
-
-            self.register_label = QLabel("<a href='#'>Register Admin</a>")
-            self.register_label.setObjectName("link")
-            self.register_label.setTextFormat(Qt.RichText)
-            self.register_label.setTextInteractionFlags(Qt.TextBrowserInteraction)
-            self.register_label.setOpenExternalLinks(False)
-            register_layout.addWidget(self.register_label)
-
-            card_layout.addLayout(register_layout)
-
         main_layout.addStretch()
         main_layout.addWidget(self.card)
         main_layout.addStretch()
 
     def _admin_exists(self):
-        """Check if any admin accounts exist"""
         try:
             conn = get_connection()
             c = conn.cursor()
@@ -175,7 +162,6 @@ class LoginWindow(QMainWindow):
 
     def _apply_styles(self):
         self.setStyleSheet("""
-        /* Dark Gradient Background */
         QMainWindow {
             background: qlineargradient(
                 spread:pad,
@@ -186,13 +172,11 @@ class LoginWindow(QMainWindow):
             );
         }
 
-        /* Card */
         QFrame#card {
             background-color: rgba(25, 25, 25, 0.95);
             border-radius: 20px;
         }
 
-        /* Title */
         QLabel#title {
             font-size: 26px;
             font-weight: bold;
@@ -205,7 +189,6 @@ class LoginWindow(QMainWindow):
             margin-bottom: 10px;
         }
 
-        /* Inputs */
         QLineEdit#input {
             padding: 12px;
             border-radius: 10px;
@@ -220,7 +203,6 @@ class LoginWindow(QMainWindow):
             background-color: #333;
         }
 
-        /* Login Button */
         QPushButton#loginButton {
             background-color: #00c6ff;
             color: black;
@@ -238,7 +220,21 @@ class LoginWindow(QMainWindow):
             background-color: #008bb5;
         }
 
-        /* Link */
+        QLabel#registerLink {
+            font-size: 13px;
+            color: #bbbbbb;
+        }
+
+        QLabel#registerLink a {
+            color: #00c6ff;
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        QLabel#registerLink a:hover {
+            text-decoration: underline;
+        }
+
         QLabel#link {
             font-size: 13px;
         }
@@ -255,7 +251,6 @@ class LoginWindow(QMainWindow):
 
 
 if __name__ == "__main__":
-    import sys
     app = QApplication(sys.argv)
     window = LoginWindow()
     window.show()

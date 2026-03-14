@@ -78,7 +78,7 @@ class AdminRegistrationWindow(QMainWindow):
 
     def _handle_back_to_login(self):
         """Handle back to login link click"""
-        from login_window import LoginWindow
+        from .login_window import LoginWindow
         self.login_window = LoginWindow()
         self.login_window.show()
         self.close()

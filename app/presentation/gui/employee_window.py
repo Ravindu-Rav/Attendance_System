@@ -110,7 +110,7 @@ class EmployeeWindow(QMainWindow):
 
     def _back_to_main(self):
         """Go back to main menu"""
-        from main_window import MainWindow
+        from .main_window import MainWindow
         self.main_window = MainWindow()
         self.main_window.show()
         self.close()
