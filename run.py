@@ -9,6 +9,10 @@ if __name__ == "__main__":
     import sys
     from PySide6.QtWidgets import QApplication
     from app.presentation.gui.login_window import LoginWindow
+    from app.database.db import init_db
+    
+    # Initialize database
+    init_db()
     
     app = QApplication(sys.argv)
     window = LoginWindow()
