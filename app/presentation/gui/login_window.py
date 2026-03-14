@@ -24,8 +24,7 @@ class LoginWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Attendance System — Login")
-        self.setMinimumSize(420, 560)
-        self.resize(420, 560)
+        self.setGeometry(100, 100, 420, 560)
 
         self.setAttribute(Qt.WA_TranslucentBackground)
 
@@ -38,6 +37,7 @@ class LoginWindow(QMainWindow):
 
     def _connect_signals(self):
         self.login_button.clicked.connect(self._handle_login)
+        self.register_label.linkActivated.connect(self._open_employee_window)
 
     def _handle_login(self):
         username = self.username_input.text().strip()
@@ -71,11 +71,11 @@ class LoginWindow(QMainWindow):
         self.main_window.show()
         self.close()
 
-    def _handle_register_admin(self):
-        from .admin_registration_window import AdminRegistrationWindow
-        self.register_window = AdminRegistrationWindow()
-        self.register_window.show()
-        self.hide()
+    def _open_employee_window(self):
+        from .employee_window import EmployeeWindow
+        self.emp_window = EmployeeWindow()
+        self.emp_window.show()
+        # Keep login open for switching back
 
     def _build_ui(self):
         main_layout = QVBoxLayout(self.central_widget)
@@ -121,49 +121,30 @@ class LoginWindow(QMainWindow):
         self.login_button.setObjectName("loginButton")
         card_layout.addWidget(self.login_button)
 
-        # Create account link (only if admin doesn't exist)
-        if not self._admin_exists():
-            register_layout = QHBoxLayout()
-            register_layout.setAlignment(Qt.AlignCenter)
+        # Create account link
+        register_layout = QHBoxLayout()
+        register_layout.setAlignment(Qt.AlignCenter)
 
-            self.register_label = QLabel(
-                "Don't have an account? <a href='#'>Create one</a>"
-            )
-            self.register_label.setObjectName("registerLink")
-            self.register_label.setTextFormat(Qt.RichText)
-            self.register_label.setTextInteractionFlags(Qt.TextBrowserInteraction)
-            self.register_label.setOpenExternalLinks(False)
-            self.register_label.linkActivated.connect(self._handle_register_admin)
+        self.register_label = QLabel(
+            "Do not have account? <a href='#'>Create one</a>"
+        )
+        self.register_label.setObjectName("registerLink")
+        self.register_label.setTextFormat(Qt.RichText)
+        self.register_label.setTextInteractionFlags(Qt.TextBrowserInteraction)
+        self.register_label.setOpenExternalLinks(False)
 
-            register_layout.addWidget(self.register_label)
-            card_layout.addLayout(register_layout)
+        register_layout.addWidget(self.register_label)
+        card_layout.addLayout(register_layout)
 
-        forgot_layout = QHBoxLayout()
-        forgot_layout.addStretch()
-
-        self.forgot_label = QLabel("<a href='#'>Forgot Password?</a>")
-        self.forgot_label.setObjectName("link")
-        self.forgot_label.setTextFormat(Qt.RichText)
-        self.forgot_label.setTextInteractionFlags(Qt.TextBrowserInteraction)
-        self.forgot_label.setOpenExternalLinks(False)
-        forgot_layout.addWidget(self.forgot_label)
-
-        card_layout.addLayout(forgot_layout)
+        # Horizontal layout to center the card
+        h_layout = QHBoxLayout()
+        h_layout.addStretch()
+        h_layout.addWidget(self.card)
+        h_layout.addStretch()
 
         main_layout.addStretch()
-        main_layout.addWidget(self.card)
+        main_layout.addLayout(h_layout)
         main_layout.addStretch()
-
-    def _admin_exists(self):
-        try:
-            conn = get_connection()
-            c = conn.cursor()
-            c.execute("SELECT COUNT(*) FROM Admin")
-            count = c.fetchone()[0]
-            conn.close()
-            return count > 0
-        except:
-            return False
 
     def _apply_styles(self):
         self.setStyleSheet("""
@@ -180,6 +161,7 @@ class LoginWindow(QMainWindow):
         QFrame#card {
             background-color: rgba(25, 25, 25, 0.95);
             border-radius: 20px;
+            max-width: 420px;
         }
 
         QLabel#title {
@@ -237,19 +219,6 @@ class LoginWindow(QMainWindow):
         }
 
         QLabel#registerLink a:hover {
-            text-decoration: underline;
-        }
-
-        QLabel#link {
-            font-size: 13px;
-        }
-
-        QLabel#link a {
-            color: #00c6ff;
-            text-decoration: none;
-        }
-
-        QLabel#link a:hover {
             text-decoration: underline;
         }
         """)
