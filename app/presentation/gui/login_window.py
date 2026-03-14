@@ -25,19 +25,23 @@ class LoginWindow(QMainWindow):
         super().__init__()
         self.setWindowTitle("Attendance System — Login")
         self.setGeometry(100, 100, 420, 560)
-
+        self.setMinimumSize(420, 560)
         self.setAttribute(Qt.WA_TranslucentBackground)
 
+        self.setWindowFlags(Qt.Window)
+
         self.central_widget = QWidget()
+        self.central_widget.setObjectName("centralWidget")
         self.setCentralWidget(self.central_widget)
 
         self._build_ui()
         self._apply_styles()
         self._connect_signals()
 
+
     def _connect_signals(self):
         self.login_button.clicked.connect(self._handle_login)
-        self.register_label.linkActivated.connect(self._open_employee_window)
+        self.register_label.linkActivated.connect(self._open_admin_registration_window)
 
     def _handle_login(self):
         username = self.username_input.text().strip()
@@ -71,10 +75,10 @@ class LoginWindow(QMainWindow):
         self.main_window.show()
         self.close()
 
-    def _open_employee_window(self):
-        from .employee_window import EmployeeWindow
-        self.emp_window = EmployeeWindow()
-        self.emp_window.show()
+    def _open_admin_registration_window(self):
+        from .admin_registration_window import AdminRegistrationWindow
+        self.admin_reg_window = AdminRegistrationWindow()
+        self.admin_reg_window.show()
         # Keep login open for switching back
 
     def _build_ui(self):
@@ -148,6 +152,7 @@ class LoginWindow(QMainWindow):
 
     def _apply_styles(self):
         self.setStyleSheet("""
+        /* Dark Gradient Background */
         QMainWindow {
             background: qlineargradient(
                 spread:pad,

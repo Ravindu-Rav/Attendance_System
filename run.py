@@ -15,5 +15,5 @@ if __name__ == "__main__":
     
     app = QApplication(sys.argv)
     window = LoginWindow()
-    window.showFullScreen()
+    window.show()   # ← normal window with title bar
     sys.exit(app.exec())
