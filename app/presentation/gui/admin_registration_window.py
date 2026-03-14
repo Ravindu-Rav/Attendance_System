@@ -24,7 +24,8 @@ class AdminRegistrationWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Attendance System — Admin Registration")
-        self.setFixedSize(420, 560)
+        self.setMinimumSize(420, 560)
+        self.resize(420, 560)
 
         self.setAttribute(Qt.WA_TranslucentBackground)
 

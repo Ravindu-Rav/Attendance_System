@@ -11,13 +11,20 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtGui import QColor, QCursor
 from PySide6.QtCore import Qt
+import sys
+import os
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+from app.database.db import get_connection
+from datetime import datetime
 
 
 class DashboardWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Attendance System — Dashboard")
-        self.setFixedSize(600, 500)
+        self.setMinimumSize(600, 500)
+        self.resize(600, 500)
 
         self.setAttribute(Qt.WA_TranslucentBackground)
 
@@ -26,6 +33,7 @@ class DashboardWindow(QMainWindow):
 
         self._build_ui()
         self._apply_styles()
+        self._load_statistics()
 
     def _build_ui(self):
         main_layout = QVBoxLayout(self.central_widget)
@@ -63,10 +71,10 @@ class DashboardWindow(QMainWindow):
         emp_layout = QVBoxLayout(emp_frame)
         emp_title = QLabel("Total Employees")
         emp_title.setObjectName("statTitle")
-        emp_value = QLabel("150")  # Placeholder
-        emp_value.setObjectName("statValue")
+        self.emp_value = QLabel("0")
+        self.emp_value.setObjectName("statValue")
         emp_layout.addWidget(emp_title)
-        emp_layout.addWidget(emp_value)
+        emp_layout.addWidget(self.emp_value)
         stats_layout.addWidget(emp_frame)
 
         # Today's Attendance
@@ -75,10 +83,10 @@ class DashboardWindow(QMainWindow):
         att_layout = QVBoxLayout(att_frame)
         att_title = QLabel("Today's Attendance")
         att_title.setObjectName("statTitle")
-        att_value = QLabel("120")  # Placeholder
-        att_value.setObjectName("statValue")
+        self.att_value = QLabel("0")
+        self.att_value.setObjectName("statValue")
         att_layout.addWidget(att_title)
-        att_layout.addWidget(att_value)
+        att_layout.addWidget(self.att_value)
         stats_layout.addWidget(att_frame)
 
         # Absent Today
@@ -87,10 +95,10 @@ class DashboardWindow(QMainWindow):
         abs_layout = QVBoxLayout(abs_frame)
         abs_title = QLabel("Absent Today")
         abs_title.setObjectName("statTitle")
-        abs_value = QLabel("30")  # Placeholder
-        abs_value.setObjectName("statValue")
+        self.abs_value = QLabel("0")
+        self.abs_value.setObjectName("statValue")
         abs_layout.addWidget(abs_title)
-        abs_layout.addWidget(abs_value)
+        abs_layout.addWidget(self.abs_value)
         stats_layout.addWidget(abs_frame)
 
         card_layout.addLayout(stats_layout)
@@ -178,6 +186,40 @@ class DashboardWindow(QMainWindow):
             background-color: #666;
         }
         """)
+
+    def _load_statistics(self):
+        """Load and display real statistics"""
+        try:
+            conn = get_connection()
+            c = conn.cursor()
+
+            # Total employees
+            c.execute("SELECT COUNT(*) FROM Employee")
+            total_employees = c.fetchone()[0]
+            self.emp_value.setText(str(total_employees))
+
+            # Today's attendance
+            today = datetime.now().strftime("%Y-%m-%d")
+            c.execute("SELECT COUNT(*) FROM On_Duty WHERE date = ?", (today,))
+            today_attendance = c.fetchone()[0]
+            self.att_value.setText(str(today_attendance))
+
+            # Absent today (total - present)
+            absent = total_employees - today_attendance
+            self.abs_value.setText(str(absent))
+
+            conn.close()
+
+        except Exception as e:
+            print(f"Error loading statistics: {e}")
+            # Keep default values on error
+
+    def _back_to_main(self):
+        """Go back to main menu"""
+        from .main_window import MainWindow
+        self.main_window = MainWindow()
+        self.main_window.show()
+        self.close()
 
 
 if __name__ == "__main__":

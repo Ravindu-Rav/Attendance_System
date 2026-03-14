@@ -112,7 +112,8 @@ class EmployeeWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Attendance System — Manage Employees")
-        self.setFixedSize(700, 700)
+        self.setMinimumSize(700, 700)
+        self.resize(700, 700)
 
         self.setAttribute(Qt.WA_TranslucentBackground)
 

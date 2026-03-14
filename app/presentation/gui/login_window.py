@@ -9,6 +9,7 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QFrame,
     QGraphicsDropShadowEffect,
+    QMessageBox,
 )
 from PySide6.QtGui import QColor, QCursor
 from PySide6.QtCore import Qt
@@ -23,7 +24,8 @@ class LoginWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Attendance System — Login")
-        self.setFixedSize(420, 560)
+        self.setMinimumSize(420, 560)
+        self.resize(420, 560)
 
         self.setAttribute(Qt.WA_TranslucentBackground)
 
@@ -42,23 +44,26 @@ class LoginWindow(QMainWindow):
         password = self.password_input.text().strip()
 
         if not username or not password:
-            print("Please enter username and password")
+            QMessageBox.warning(self, "Login Error", "Please enter both username and password.")
             return
 
         import hashlib
         hashed_password = hashlib.sha256(password.encode()).hexdigest()
 
-        conn = get_connection()
-        c = conn.cursor()
-        c.execute("SELECT * FROM Admin WHERE username = ? AND password = ?", (username, hashed_password))
-        admin = c.fetchone()
-        conn.close()
+        try:
+            conn = get_connection()
+            c = conn.cursor()
+            c.execute("SELECT * FROM Admin WHERE username = ? AND password = ?", (username, hashed_password))
+            admin = c.fetchone()
+            conn.close()
 
-        if admin:
-            print("Login successful!")
-            self._open_main_window()
-        else:
-            print("Invalid credentials")
+            if admin:
+                QMessageBox.information(self, "Login Successful", "Welcome to the Attendance System!")
+                self._open_main_window()
+            else:
+                QMessageBox.warning(self, "Login Failed", "Invalid username or password. Please try again.")
+        except Exception as e:
+            QMessageBox.critical(self, "Database Error", f"Failed to authenticate: {str(e)}")
 
     def _open_main_window(self):
         from .main_window import MainWindow

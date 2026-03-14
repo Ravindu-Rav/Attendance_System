@@ -46,7 +46,8 @@ class TrainingWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Attendance System — Train Model")
-        self.setFixedSize(600, 500)
+        self.setMinimumSize(600, 500)
+        self.resize(600, 500)
 
         self.setAttribute(Qt.WA_TranslucentBackground)
 

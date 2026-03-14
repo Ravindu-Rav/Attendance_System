@@ -8,21 +8,7 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QFrame,
     QGraphicsDropShadowEffect,
-)
-from PySide6.QtGui import QColor, QCursor
-from PySide6.QtCore import Qt
-
-
-from PySide6.QtWidgets import (
-    QApplication,
-    QMainWindow,
-    QWidget,
-    QLabel,
-    QPushButton,
-    QVBoxLayout,
-    QHBoxLayout,
-    QFrame,
-    QGraphicsDropShadowEffect,
+    QStatusBar,
 )
 from PySide6.QtGui import QColor, QCursor
 from PySide6.QtCore import Qt
@@ -32,7 +18,8 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Attendance System — Main Menu")
-        self.setFixedSize(420, 560)
+        self.setMinimumSize(420, 560)
+        self.resize(420, 560)
 
         self.setAttribute(Qt.WA_TranslucentBackground)
 
@@ -42,12 +29,62 @@ class MainWindow(QMainWindow):
         self._build_ui()
         self._apply_styles()
         self._connect_signals()
+        self._setup_status_bar()
+        self._setup_shortcuts()
 
     def _connect_signals(self):
         """Connect button signals"""
         self.dashboard_button.clicked.connect(self._open_dashboard)
         self.employee_button.clicked.connect(self._open_employee_management)
         self.attendance_button.clicked.connect(self._open_attendance)
+
+    def _setup_status_bar(self):
+        """Setup status bar with system information"""
+        self.status_bar = self.statusBar()
+        self.status_bar.setStyleSheet("""
+            QStatusBar {
+                background-color: rgba(25, 25, 25, 0.95);
+                color: #cccccc;
+                border-top: 1px solid #444;
+            }
+        """)
+
+        # Add status labels
+        self.status_label = QLabel("Ready")
+        self.status_label.setStyleSheet("color: #cccccc; padding: 2px;")
+        self.status_bar.addWidget(self.status_label)
+
+        self.status_bar.addPermanentWidget(QLabel("Attendance System v1.0"))
+        self.status_bar.showMessage("System ready", 3000)
+
+    def _setup_shortcuts(self):
+        """Setup keyboard shortcuts"""
+        from PySide6.QtGui import QShortcut
+        from PySide6.QtCore import Qt
+
+        # Ctrl+D for Dashboard
+        QShortcut(Qt.CTRL | Qt.Key_D, self, self._open_dashboard)
+
+        # Ctrl+E for Employee Management
+        QShortcut(Qt.CTRL | Qt.Key_E, self, self._open_employee_management)
+
+        # Ctrl+A for Attendance
+        QShortcut(Qt.CTRL | Qt.Key_A, self, self._open_attendance)
+
+        # Ctrl+Q to quit
+        QShortcut(Qt.CTRL | Qt.Key_Q, self, self._confirm_quit)
+
+    def _confirm_quit(self):
+        """Confirm before quitting"""
+        from PySide6.QtWidgets import QMessageBox
+        reply = QMessageBox.question(
+            self, "Confirm Exit",
+            "Are you sure you want to exit the Attendance System?",
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No
+        )
+        if reply == QMessageBox.Yes:
+            self.close()
         self.logout_button.clicked.connect(self._logout)
 
     def _open_dashboard(self):
@@ -113,16 +150,19 @@ class MainWindow(QMainWindow):
         self.dashboard_button = QPushButton("Dashboard")
         self.dashboard_button.setCursor(QCursor(Qt.PointingHandCursor))
         self.dashboard_button.setObjectName("menuButton")
+        self.dashboard_button.setToolTip("View system dashboard (Ctrl+D)")
         card_layout.addWidget(self.dashboard_button)
 
         self.employee_button = QPushButton("Manage Employees")
         self.employee_button.setCursor(QCursor(Qt.PointingHandCursor))
         self.employee_button.setObjectName("menuButton")
+        self.employee_button.setToolTip("Add, edit, and manage employees (Ctrl+E)")
         card_layout.addWidget(self.employee_button)
 
         self.attendance_button = QPushButton("Mark Attendance")
         self.attendance_button.setCursor(QCursor(Qt.PointingHandCursor))
         self.attendance_button.setObjectName("menuButton")
+        self.attendance_button.setToolTip("Start attendance scanning (Ctrl+A)")
         card_layout.addWidget(self.attendance_button)
 
         self.logout_button = QPushButton("Logout")
