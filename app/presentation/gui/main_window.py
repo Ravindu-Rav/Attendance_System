@@ -8,6 +8,7 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QFrame,
     QGraphicsDropShadowEffect,
+    QSizePolicy,
     QStatusBar,
 )
 from PySide6.QtGui import QColor, QCursor
@@ -21,7 +22,7 @@ class MainWindow(QMainWindow):
         self.setMinimumSize(420, 560)
         self.resize(420, 560)
 
-        self.setAttribute(Qt.WA_TranslucentBackground)
+        self.setWindowState(Qt.WindowMaximized)
 
         self.central_widget = QWidget()
         self.setCentralWidget(self.central_widget)
@@ -37,6 +38,7 @@ class MainWindow(QMainWindow):
         self.dashboard_button.clicked.connect(self._open_dashboard)
         self.employee_button.clicked.connect(self._open_employee_management)
         self.attendance_button.clicked.connect(self._open_attendance)
+        self.logout_button.clicked.connect(self._logout)
 
     def _setup_status_bar(self):
         """Setup status bar with system information"""
@@ -85,7 +87,6 @@ class MainWindow(QMainWindow):
         )
         if reply == QMessageBox.Yes:
             self.close()
-        self.logout_button.clicked.connect(self._logout)
 
     def _open_dashboard(self):
         """Open dashboard window"""
@@ -112,7 +113,7 @@ class MainWindow(QMainWindow):
         """Logout and return to login"""
         from .login_window import LoginWindow
         self.login_window = LoginWindow()
-        self.login_window.show()
+        self.login_window.showMaximized()
         self.close()
 
     def _build_ui(self):
@@ -122,6 +123,8 @@ class MainWindow(QMainWindow):
         # Card container
         self.card = QFrame()
         self.card.setObjectName("card")
+        self.card.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+        self.card.setMinimumWidth(900)
 
         # Drop shadow
         shadow = QGraphicsDropShadowEffect()
@@ -132,8 +135,8 @@ class MainWindow(QMainWindow):
         self.card.setGraphicsEffect(shadow)
 
         card_layout = QVBoxLayout(self.card)
-        card_layout.setContentsMargins(40, 50, 40, 40)
-        card_layout.setSpacing(25)
+        card_layout.setContentsMargins(64, 60, 64, 56)
+        card_layout.setSpacing(18)
 
         # Title
         self.title = QLabel("Attendance System")
@@ -146,6 +149,11 @@ class MainWindow(QMainWindow):
         self.subtitle.setAlignment(Qt.AlignCenter)
         card_layout.addWidget(self.subtitle)
 
+        self.caption = QLabel("Choose an action to continue")
+        self.caption.setObjectName("caption")
+        self.caption.setAlignment(Qt.AlignCenter)
+        card_layout.addWidget(self.caption)
+
         # Buttons
         self.dashboard_button = QPushButton("Dashboard")
         self.dashboard_button.setCursor(QCursor(Qt.PointingHandCursor))
@@ -153,11 +161,21 @@ class MainWindow(QMainWindow):
         self.dashboard_button.setToolTip("View system dashboard (Ctrl+D)")
         card_layout.addWidget(self.dashboard_button)
 
+        self.dashboard_hint = QLabel("Overview of system activity and quick stats")
+        self.dashboard_hint.setObjectName("hint")
+        self.dashboard_hint.setAlignment(Qt.AlignCenter)
+        card_layout.addWidget(self.dashboard_hint)
+
         self.employee_button = QPushButton("Manage Employees")
         self.employee_button.setCursor(QCursor(Qt.PointingHandCursor))
         self.employee_button.setObjectName("menuButton")
         self.employee_button.setToolTip("Add, edit, and manage employees (Ctrl+E)")
         card_layout.addWidget(self.employee_button)
+
+        self.employee_hint = QLabel("Create, edit, and organize employee records")
+        self.employee_hint.setObjectName("hint")
+        self.employee_hint.setAlignment(Qt.AlignCenter)
+        card_layout.addWidget(self.employee_hint)
 
         self.attendance_button = QPushButton("Mark Attendance")
         self.attendance_button.setCursor(QCursor(Qt.PointingHandCursor))
@@ -165,13 +183,30 @@ class MainWindow(QMainWindow):
         self.attendance_button.setToolTip("Start attendance scanning (Ctrl+A)")
         card_layout.addWidget(self.attendance_button)
 
+        self.attendance_hint = QLabel("Record attendance quickly and accurately")
+        self.attendance_hint.setObjectName("hint")
+        self.attendance_hint.setAlignment(Qt.AlignCenter)
+        card_layout.addWidget(self.attendance_hint)
+
         self.logout_button = QPushButton("Logout")
         self.logout_button.setCursor(QCursor(Qt.PointingHandCursor))
         self.logout_button.setObjectName("logoutButton")
         card_layout.addWidget(self.logout_button)
 
+        self.logout_hint = QLabel("Sign out and return to the login screen")
+        self.logout_hint.setObjectName("hint")
+        self.logout_hint.setAlignment(Qt.AlignCenter)
+        card_layout.addWidget(self.logout_hint)
+
         main_layout.addStretch()
-        main_layout.addWidget(self.card)
+ 
+        h_layout = QHBoxLayout()
+        h_layout.addStretch()
+        h_layout.addWidget(self.card)
+        h_layout.addStretch()
+
+        main_layout.addLayout(h_layout)
+
         main_layout.addStretch()
 
     def _apply_styles(self):
@@ -189,57 +224,80 @@ class MainWindow(QMainWindow):
 
         /* Card */
         QFrame#card {
-            background-color: rgba(25, 25, 25, 0.95);
-            border-radius: 20px;
+            background: qlineargradient(
+                spread:pad,
+                x1:0, y1:0,
+                x2:0, y2:1,
+                stop:0 rgba(30, 34, 38, 0.98),
+                stop:1 rgba(22, 24, 28, 0.98)
+            );
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 24px;
+            max-width: 1200px;
         }
 
         /* Title */
         QLabel#title {
-            font-size: 26px;
-            font-weight: bold;
-            color: #ffffff;
+            font-size: 30px;
+            font-weight: 700;
+            color: #f4f7f9;
+            letter-spacing: 0.3px;
         }
 
         QLabel#subtitle {
-            font-size: 14px;
-            color: #bbbbbb;
+            font-size: 15px;
+            color: #c5cbd0;
+            margin-bottom: 6px;
+        }
+
+        QLabel#caption {
+            font-size: 13px;
+            color: #9aa6ac;
+            margin-bottom: 14px;
+        }
+
+        QLabel#hint {
+            font-size: 12px;
+            color: #8e9aa1;
             margin-bottom: 10px;
         }
 
         /* Menu Buttons */
         QPushButton#menuButton {
-            background-color: #00c6ff;
-            color: black;
-            padding: 12px;
-            border-radius: 12px;
+            background-color: #16c2ff;
+            color: #0b1216;
+            padding: 14px 18px;
+            border-radius: 14px;
             font-size: 16px;
             font-weight: bold;
+            min-height: 44px;
         }
 
         QPushButton#menuButton:hover {
-            background-color: #00a6d6;
+            background-color: #0fb4e6;
         }
 
         QPushButton#menuButton:pressed {
-            background-color: #008bb5;
+            background-color: #0a9bc7;
         }
 
         /* Logout Button */
         QPushButton#logoutButton {
-            background-color: #ff4444;
+            background-color: #ff4b55;
             color: white;
-            padding: 12px;
-            border-radius: 12px;
+            padding: 14px 18px;
+            border-radius: 14px;
             font-size: 16px;
             font-weight: bold;
+            min-height: 44px;
         }
 
         QPushButton#logoutButton:hover {
-            background-color: #cc3333;
+            background-color: #e13e47;
         }
 
         QPushButton#logoutButton:pressed {
-            background-color: #aa2222;
+            background-color: #c8353d;
         }
         """)
 

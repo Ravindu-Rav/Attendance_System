@@ -60,7 +60,7 @@ class LoginWindow(QMainWindow):
     def _open_main_window(self):
         from .main_window import MainWindow
         self.main_window = MainWindow()
-        self.main_window.show()
+        self.main_window.showMaximized()
         self.close()
 
     def _open_admin_registration_window(self):
