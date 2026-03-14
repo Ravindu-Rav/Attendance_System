@@ -9,7 +9,7 @@ MODEL_PATH = "models_storage/trainer.yml"
 # Face Recognition Settings
 FACE_RECOGNITION_CONFIDENCE_THRESHOLD = 60
 DEFAULT_CAPTURE_SAMPLES = 50
-FACE_DETECTOR_MODEL = cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
+FACE_DETECTOR_MODEL = "haarcascade_frontalface_default.xml"
 
 # Camera Settings
 CAMERA_INDEX = 0

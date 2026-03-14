@@ -2,7 +2,7 @@
 import cv2
 from datetime import datetime
 from app.database.db import get_connection
-from app.config.settings import MODEL_PATH
+from app.config.settings import MODEL_PATH, FACE_DETECTOR_MODEL
 
 
 def get_employee_name(employee_id):
@@ -87,7 +87,7 @@ def start_face_recognition(confidence_threshold=60):
     recognizer.read(MODEL_PATH)
 
     face_cascade = cv2.CascadeClassifier(
-        cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
+        cv2.data.haarcascades + FACE_DETECTOR_MODEL
     )
 
     cam = cv2.VideoCapture(0)

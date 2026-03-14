@@ -2,7 +2,7 @@
 import cv2
 import os
 from app.models.employee_repository import EmployeeRepository
-from app.config.settings import DATASET_DIR
+from app.config.settings import DATASET_DIR, FACE_DETECTOR_MODEL
 
 
 def add_employee(employee_id, fname, lname, gender=1, age=25, email=None, password="password123"):
@@ -34,7 +34,7 @@ def capture_faces(employee_id, num_samples=30):
     os.makedirs(dataset_path, exist_ok=True)
 
     face_detector = cv2.CascadeClassifier(
-        cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
+        cv2.data.haarcascades + FACE_DETECTOR_MODEL
     )
 
     cam = cv2.VideoCapture(0)
