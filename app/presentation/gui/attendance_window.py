@@ -11,6 +11,7 @@ from PySide6.QtWidgets import (
     QListWidget,
     QListWidgetItem,
     QMessageBox,
+    QSizePolicy,
 )
 from PySide6.QtGui import QColor, QCursor, QImage, QPixmap
 from PySide6.QtCore import Qt, QTimer, QThread, Signal
@@ -237,7 +238,7 @@ class AttendanceWindow(QMainWindow):
         self.setMinimumSize(600, 600)
         self.resize(600, 600)
 
-        self.setAttribute(Qt.WA_TranslucentBackground)
+        self.setWindowState(Qt.WindowMaximized)
 
         self.camera_thread = None
         self.is_scanning = False
@@ -258,6 +259,8 @@ class AttendanceWindow(QMainWindow):
         # Card container
         self.card = QFrame()
         self.card.setObjectName("card")
+        self.card.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+        self.card.setMinimumWidth(900)
 
         # Drop shadow
         shadow = QGraphicsDropShadowEffect()
@@ -271,11 +274,28 @@ class AttendanceWindow(QMainWindow):
         card_layout.setContentsMargins(40, 50, 40, 40)
         card_layout.setSpacing(20)
 
-        # Title
+        header_layout = QHBoxLayout()
+        header_layout.setSpacing(12)
+        title_layout = QVBoxLayout()
+        title_layout.setSpacing(4)
+
         self.title = QLabel("Mark Attendance")
         self.title.setObjectName("title")
-        self.title.setAlignment(Qt.AlignCenter)
-        card_layout.addWidget(self.title)
+        self.subtitle = QLabel("Live recognition and attendance log")
+        self.subtitle.setObjectName("subtitle")
+        title_layout.addWidget(self.title)
+        title_layout.addWidget(self.subtitle)
+
+        header_layout.addLayout(title_layout)
+        header_layout.addStretch()
+
+        self.back_button = QPushButton("Back to Main Menu")
+        self.back_button.setCursor(QCursor(Qt.PointingHandCursor))
+        self.back_button.setObjectName("backButton")
+        self.back_button.clicked.connect(self._back_to_main)
+        header_layout.addWidget(self.back_button)
+
+        card_layout.addLayout(header_layout)
 
         # Camera Feed
         self.camera_label = QLabel("Camera not started")
@@ -303,7 +323,11 @@ class AttendanceWindow(QMainWindow):
         card_layout.addWidget(self.status_label)
 
         main_layout.addStretch()
-        main_layout.addWidget(self.card)
+        h_layout = QHBoxLayout()
+        h_layout.addStretch()
+        h_layout.addWidget(self.card)
+        h_layout.addStretch()
+        main_layout.addLayout(h_layout)
         main_layout.addStretch()
 
     def _connect_signals(self):
@@ -437,18 +461,18 @@ class AttendanceWindow(QMainWindow):
         """Reset mark button to original style"""
         self.mark_button.setStyleSheet("""
             QPushButton#markButton {
-                background-color: #00c6ff;
-                color: black;
+                background-color: #16c2ff;
+                color: #0b1216;
                 padding: 15px;
                 border-radius: 12px;
                 font-size: 18px;
                 font-weight: bold;
             }
             QPushButton#markButton:hover {
-                background-color: #00a6d6;
+                background-color: #0fb4e6;
             }
             QPushButton#markButton:pressed {
-                background-color: #008bb5;
+                background-color: #0a9bc7;
             }
         """)
 
@@ -542,30 +566,44 @@ class AttendanceWindow(QMainWindow):
 
         /* Card */
         QFrame#card {
-            background-color: rgba(25, 25, 25, 0.95);
-            border-radius: 20px;
+            background: qlineargradient(
+                spread:pad,
+                x1:0, y1:0,
+                x2:0, y2:1,
+                stop:0 rgba(30, 34, 38, 0.98),
+                stop:1 rgba(22, 24, 28, 0.98)
+            );
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 24px;
+            max-width: 1200px;
         }
 
         /* Title */
         QLabel#title {
-            font-size: 26px;
-            font-weight: bold;
-            color: #ffffff;
+            font-size: 28px;
+            font-weight: 700;
+            color: #f4f7f9;
+            letter-spacing: 0.3px;
+        }
+
+        QLabel#subtitle {
+            font-size: 13px;
+            color: #9aa6ac;
         }
 
         /* Camera Label */
         QLabel#cameraLabel {
-            background-color: #2b2b2b;
-            border-radius: 10px;
-            color: #bbbbbb;
+            background-color: rgba(16, 20, 24, 0.8);
+            border-radius: 12px;
+            color: #aab4ba;
             font-size: 18px;
-            border: 2px dashed #444;
+            border: 2px dashed rgba(255, 255, 255, 0.12);
         }
 
         /* Mark Button */
         QPushButton#markButton {
-            background-color: #00c6ff;
-            color: black;
+            background-color: #16c2ff;
+            color: #0b1216;
             padding: 15px;
             border-radius: 12px;
             font-size: 18px;
@@ -573,56 +611,56 @@ class AttendanceWindow(QMainWindow):
         }
 
         QPushButton#markButton:hover {
-            background-color: #00a6d6;
+            background-color: #0fb4e6;
         }
 
         QPushButton#markButton:pressed {
-            background-color: #008bb5;
+            background-color: #0a9bc7;
         }
 
         /* Attendance List */
         QListWidget#attendanceList {
-            background-color: #2b2b2b;
-            border-radius: 10px;
+            background-color: rgba(16, 20, 24, 0.8);
+            border-radius: 12px;
             padding: 10px;
-            color: white;
+            color: #e8edf1;
             font-size: 14px;
         }
 
         QListWidget#attendanceList::item {
             padding: 5px;
-            border-bottom: 1px solid #444;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
         }
 
         QListWidget#attendanceList::item:selected {
-            background-color: #00c6ff;
-            color: black;
+            background-color: #16c2ff;
+            color: #0b1216;
         }
 
         /* Back Button */
         QPushButton#backButton {
-            background-color: #444;
-            color: white;
-            padding: 12px;
-            border-radius: 12px;
-            font-size: 16px;
-            font-weight: bold;
+            background-color: rgba(255, 255, 255, 0.08);
+            color: #e8edf1;
+            padding: 10px 14px;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
         }
 
         QPushButton#backButton:hover {
-            background-color: #555;
+            background-color: rgba(255, 255, 255, 0.14);
         }
 
         QPushButton#backButton:pressed {
-            background-color: #666;
+            background-color: rgba(255, 255, 255, 0.2);
         }
 
         /* Status Label */
         QLabel#statusLabel {
-            color: #cccccc;
+            color: #c2c9ce;
             font-size: 14px;
             padding: 5px;
-            background-color: rgba(50, 50, 50, 0.8);
+            background-color: rgba(22, 26, 30, 0.8);
             border-radius: 5px;
         }
         """)

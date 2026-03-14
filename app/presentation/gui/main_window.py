@@ -92,21 +92,21 @@ class MainWindow(QMainWindow):
         """Open dashboard window"""
         from .dashboard_window import DashboardWindow
         self.dashboard_window = DashboardWindow()
-        self.dashboard_window.show()
+        self.dashboard_window.showMaximized()
         self.close()
 
     def _open_employee_management(self):
         """Open employee management window"""
         from .employee_window import EmployeeWindow
         self.employee_window = EmployeeWindow()
-        self.employee_window.show()
+        self.employee_window.showMaximized()
         self.close()
 
     def _open_attendance(self):
         """Open attendance window"""
         from .attendance_window import AttendanceWindow
         self.attendance_window = AttendanceWindow()
-        self.attendance_window.show()
+        self.attendance_window.showMaximized()
         self.close()
 
     def _logout(self):

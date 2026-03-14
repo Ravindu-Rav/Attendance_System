@@ -14,6 +14,7 @@ from PySide6.QtWidgets import (
     QMessageBox,
     QProgressBar,
     QTextEdit,
+    QSizePolicy,
 )
 from PySide6.QtGui import QColor, QCursor
 from PySide6.QtCore import Qt, QThread, Signal
@@ -113,7 +114,7 @@ class EmployeeWindow(QMainWindow):
         self.setMinimumSize(350, 450)
         self.resize(420, 560)
 
-        self.setAttribute(Qt.WA_TranslucentBackground)
+        self.setWindowState(Qt.WindowMaximized)
 
         self.central_widget = QWidget()
         self.setCentralWidget(self.central_widget)
@@ -139,6 +140,8 @@ class EmployeeWindow(QMainWindow):
         # Card container
         self.card = QFrame()
         self.card.setObjectName("card")
+        self.card.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+        self.card.setMinimumWidth(900)
 
         # Drop shadow
         shadow = QGraphicsDropShadowEffect()
@@ -161,9 +164,6 @@ class EmployeeWindow(QMainWindow):
         # Employee List
         self.employee_list = QListWidget()
         self.employee_list.setObjectName("employeeList")
-        # Placeholder items
-        self.employee_list.addItem("John Doe - ID: 001")
-        self.employee_list.addItem("Jane Smith - ID: 002")
         card_layout.addWidget(self.employee_list)
 
         # Add Employee Form
@@ -237,7 +237,11 @@ class EmployeeWindow(QMainWindow):
         card_layout.addWidget(self.back_button)
 
         main_layout.addStretch()
-        main_layout.addWidget(self.card)
+        h_layout = QHBoxLayout()
+        h_layout.addStretch()
+        h_layout.addWidget(self.card)
+        h_layout.addStretch()
+        main_layout.addLayout(h_layout)
         main_layout.addStretch()
 
     def _back_to_main(self):
@@ -431,55 +435,64 @@ class EmployeeWindow(QMainWindow):
 
         /* Card */
         QFrame#card {
-            background-color: rgba(25, 25, 25, 0.95);
-            border-radius: 20px;
+            background: qlineargradient(
+                spread:pad,
+                x1:0, y1:0,
+                x2:0, y2:1,
+                stop:0 rgba(30, 34, 38, 0.98),
+                stop:1 rgba(22, 24, 28, 0.98)
+            );
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 24px;
+            max-width: 1200px;
         }
 
         /* Title */
         QLabel#title {
-            font-size: 26px;
-            font-weight: bold;
-            color: #ffffff;
+            font-size: 28px;
+            font-weight: 700;
+            color: #f4f7f9;
+            letter-spacing: 0.3px;
         }
 
         /* Employee List */
         QListWidget#employeeList {
-            background-color: #2b2b2b;
-            border-radius: 10px;
+            background-color: rgba(16, 20, 24, 0.8);
+            border-radius: 12px;
             padding: 10px;
-            color: white;
+            color: #e8edf1;
             font-size: 14px;
         }
 
         QListWidget#employeeList::item {
             padding: 5px;
-            border-bottom: 1px solid #444;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
         }
 
         QListWidget#employeeList::item:selected {
-            background-color: #00c6ff;
-            color: black;
+            background-color: #16c2ff;
+            color: #0b1216;
         }
 
         /* Inputs */
         QLineEdit#input {
             padding: 12px;
             border-radius: 10px;
-            border: 1px solid #444;
+            border: 1px solid rgba(255, 255, 255, 0.08);
             font-size: 14px;
-            background-color: #2b2b2b;
-            color: white;
+            background-color: rgba(16, 20, 24, 0.9);
+            color: #e8edf1;
         }
 
         QLineEdit#input:focus {
-            border: 2px solid #00c6ff;
-            background-color: #333;
+            border: 2px solid #16c2ff;
+            background-color: rgba(22, 26, 30, 0.95);
         }
 
         /* Buttons */
         QPushButton#addButton {
-            background-color: #00c6ff;
-            color: black;
+            background-color: #16c2ff;
+            color: #0b1216;
             padding: 10px;
             border-radius: 10px;
             font-size: 14px;
@@ -487,12 +500,12 @@ class EmployeeWindow(QMainWindow):
         }
 
         QPushButton#addButton:hover {
-            background-color: #00a6d6;
+            background-color: #0fb4e6;
         }
 
         QPushButton#editButton {
-            background-color: #ffa500;
-            color: black;
+            background-color: #f5b342;
+            color: #0b1216;
             padding: 10px;
             border-radius: 10px;
             font-size: 14px;
@@ -500,12 +513,12 @@ class EmployeeWindow(QMainWindow):
         }
 
         QPushButton#editButton:hover {
-            background-color: #e69500;
+            background-color: #e2a63a;
         }
 
         QPushButton#deleteButton {
-            background-color: #ff4444;
-            color: white;
+            background-color: #ff4b55;
+            color: #ffffff;
             padding: 10px;
             border-radius: 10px;
             font-size: 14px;
@@ -513,34 +526,34 @@ class EmployeeWindow(QMainWindow):
         }
 
         QPushButton#deleteButton:hover {
-            background-color: #cc3333;
+            background-color: #e13e47;
         }
 
         /* Progress Bar */
         QProgressBar#progressBar {
-            border: 2px solid #444;
+            border: 1px solid rgba(255, 255, 255, 0.08);
             border-radius: 5px;
             text-align: center;
         }
 
         QProgressBar#progressBar::chunk {
-            background-color: #00c6ff;
+            background-color: #16c2ff;
         }
 
         /* Status Text */
         QTextEdit#statusText {
-            background-color: #2b2b2b;
+            background-color: rgba(16, 20, 24, 0.9);
             border-radius: 5px;
             padding: 5px;
-            color: white;
+            color: #e8edf1;
             font-family: monospace;
             font-size: 11px;
         }
 
         /* Capture Button */
         QPushButton#captureButton {
-            background-color: #ffa500;
-            color: black;
+            background-color: #f5b342;
+            color: #0b1216;
             padding: 10px;
             border-radius: 8px;
             font-size: 12px;
@@ -548,16 +561,29 @@ class EmployeeWindow(QMainWindow):
         }
 
         QPushButton#captureButton:hover {
-            background-color: #e69500;
+            background-color: #e2a63a;
         }
 
         QPushButton#captureButton:pressed {
-            background-color: #cc8400;
+            background-color: #c89132;
         }
 
         QPushButton#captureButton:disabled {
-            background-color: #666;
-            color: #ccc;
+            background-color: #525a61;
+            color: #c2c9ce;
+        }
+
+        QPushButton#backButton {
+            background-color: rgba(255, 255, 255, 0.08);
+            color: #e8edf1;
+            padding: 12px;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        QPushButton#backButton:hover {
+            background-color: rgba(255, 255, 255, 0.14);
         }
         """)
 
