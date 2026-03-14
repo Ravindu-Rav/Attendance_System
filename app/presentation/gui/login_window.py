@@ -13,19 +13,14 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtGui import QColor, QCursor
 from PySide6.QtCore import Qt
-import sys
-import os
-
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-from app.database.db import get_connection
 
 
 class LoginWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Attendance System — Login")
-        self.setGeometry(100, 100, 420, 560)
-        self.setMinimumSize(420, 560)
+        self.resize(420, 560)
+        self.setMinimumSize(350, 450)
         self.setAttribute(Qt.WA_TranslucentBackground)
 
         self.setWindowFlags(Qt.Window)
@@ -51,17 +46,9 @@ class LoginWindow(QMainWindow):
             QMessageBox.warning(self, "Login Error", "Please enter both username and password.")
             return
 
-        import hashlib
-        hashed_password = hashlib.sha256(password.encode()).hexdigest()
-
         try:
-            conn = get_connection()
-            c = conn.cursor()
-            c.execute("SELECT * FROM Admin WHERE username = ? AND password = ?", (username, hashed_password))
-            admin = c.fetchone()
-            conn.close()
-
-            if admin:
+            from app.controllers.auth_controller import authenticate_admin
+            if authenticate_admin(username, password):
                 QMessageBox.information(self, "Login Successful", "Welcome to the Attendance System!")
                 self._open_main_window()
             else:
@@ -78,8 +65,8 @@ class LoginWindow(QMainWindow):
     def _open_admin_registration_window(self):
         from .admin_registration_window import AdminRegistrationWindow
         self.admin_reg_window = AdminRegistrationWindow()
+        self.admin_reg_window.setWindowModality(Qt.ApplicationModal)
         self.admin_reg_window.show()
-        # Keep login open for switching back
 
     def _build_ui(self):
         main_layout = QVBoxLayout(self.central_widget)

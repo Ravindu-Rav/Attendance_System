@@ -7,9 +7,7 @@ def handle_train_model():
     """Handle model training workflow"""
     try:
         success = train_model(DATASET_DIR, MODEL_PATH)
-        if success:
-            print("Model training completed successfully")
-        else:
-            print("Model training failed")
+        return success
     except Exception as e:
         print(f"Error during model training: {e}")
+        return False

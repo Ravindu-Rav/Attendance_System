@@ -21,10 +21,6 @@ import sys
 import os
 import cv2
 import numpy as np
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-from app.database.db import get_connection
-from app.services.registration_service import add_employee, capture_faces
-from app.services.training_service import train_model
 
 
 class FaceCaptureThread(QThread):
@@ -97,10 +93,12 @@ class ModelTrainingThread(QThread):
 
     def run(self):
         """Run training in thread"""
+    def run(self):
+        """Run training in thread"""
         try:
-            self.progress.emit("Loading training data...")
-            result = train_model()
-            if result:
+            from app.controllers.training_controller import handle_train_model
+            success = handle_train_model()
+            if success:
                 self.finished.emit(True, "Model training completed successfully!")
             else:
                 self.finished.emit(False, "No training data found. Please capture faces for employees first.")
@@ -112,8 +110,8 @@ class EmployeeWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Attendance System — Manage Employees")
-        self.setMinimumSize(700, 700)
-        self.resize(700, 700)
+        self.setMinimumSize(350, 450)
+        self.resize(420, 560)
 
         self.setAttribute(Qt.WA_TranslucentBackground)
 
@@ -253,12 +251,8 @@ class EmployeeWindow(QMainWindow):
         """Load employees from database"""
         self.employee_list.clear()
         try:
-            conn = get_connection()
-            c = conn.cursor()
-            c.execute("SELECT employee_ID, fname, lname FROM Employee")
-            employees = c.fetchall()
-            conn.close()
-
+            from app.controllers.registration_controller import handle_get_employees
+            employees = handle_get_employees()
             for emp in employees:
                 self.employee_list.addItem(f"{emp[1]} {emp[2]} - ID: {emp[0]}")
         except Exception as e:
@@ -274,15 +268,8 @@ class EmployeeWindow(QMainWindow):
             return
 
         try:
-            # For simplicity, using basic employee creation
-            # In real app, you'd have more fields
-            conn = get_connection()
-            c = conn.cursor()
-            c.execute("INSERT INTO Employee (employee_ID, fname, lname) VALUES (?, ?, ?)",
-                     (int(emp_id), name.split()[0], ' '.join(name.split()[1:])))
-            conn.commit()
-            conn.close()
-
+            from app.controllers.registration_controller import handle_add_employee
+            handle_add_employee(name, emp_id)
             QMessageBox.information(self, "Success", f"Employee {name} added successfully!")
             self.name_input.clear()
             self.id_input.clear()
@@ -296,6 +283,8 @@ class EmployeeWindow(QMainWindow):
             if reply == QMessageBox.Yes:
                 self._capture_faces_for_employee(int(emp_id))
 
+        except ValueError as e:
+            QMessageBox.warning(self, "Error", str(e))
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Failed to add employee: {str(e)}")
 
@@ -316,15 +305,12 @@ class EmployeeWindow(QMainWindow):
             return
 
         try:
-            conn = get_connection()
-            c = conn.cursor()
-            c.execute("UPDATE Employee SET fname = ?, lname = ? WHERE employee_ID = ?",
-                     (new_name.split()[0], ' '.join(new_name.split()[1:]), emp_id))
-            conn.commit()
-            conn.close()
-
+            from app.controllers.registration_controller import handle_update_employee
+            handle_update_employee(emp_id, new_name)
             QMessageBox.information(self, "Success", "Employee updated successfully!")
             self._load_employees()
+        except ValueError as e:
+            QMessageBox.warning(self, "Error", str(e))
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Failed to update employee: {str(e)}")
 
@@ -344,12 +330,8 @@ class EmployeeWindow(QMainWindow):
 
         if reply == QMessageBox.Yes:
             try:
-                conn = get_connection()
-                c = conn.cursor()
-                c.execute("DELETE FROM Employee WHERE employee_ID = ?", (emp_id,))
-                conn.commit()
-                conn.close()
-
+                from app.controllers.registration_controller import handle_delete_employee
+                handle_delete_employee(emp_id)
                 QMessageBox.information(self, "Success", "Employee deleted successfully!")
                 self._load_employees()
                 self.capture_button.setEnabled(False)

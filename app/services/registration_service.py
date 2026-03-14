@@ -1,14 +1,15 @@
 """Employee Registration Service"""
 import cv2
 import os
-from app.database.db import get_connection
+from app.models.employee_repository import EmployeeRepository
 from app.config.settings import DATASET_DIR
 
 
-def add_employee(fname, lname, gender, age, email, password):
+def add_employee(employee_id, fname, lname, gender=1, age=25, email=None, password="password123"):
     """Add new employee to database
     
     Args:
+        employee_id: Employee ID
         fname: First name
         lname: Last name
         gender: Gender (1=Male, 2=Female)
@@ -19,19 +20,7 @@ def add_employee(fname, lname, gender, age, email, password):
     Returns:
         Employee ID
     """
-    conn = get_connection()
-    c = conn.cursor()
-
-    c.execute("""
-    INSERT INTO Employee (fname, lname, gender, age, emp_email, emp_pass)
-    VALUES (?, ?, ?, ?, ?, ?)
-    """, (fname, lname, gender, age, email, password))
-
-    employee_id = c.lastrowid
-    conn.commit()
-    conn.close()
-
-    return employee_id
+    return EmployeeRepository.create_employee(employee_id, fname, lname, gender, age, email, password)
 
 
 def capture_faces(employee_id, num_samples=30):

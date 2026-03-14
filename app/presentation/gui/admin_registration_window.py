@@ -16,18 +16,15 @@ from PySide6.QtCore import Qt
 import sys
 import os
 import hashlib
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-from app.database.db import get_connection
 
 
 class AdminRegistrationWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Attendance System — Admin Registration")
-        self.setMinimumSize(420, 560)
+        self.setMinimumSize(350, 450)
         self.resize(420, 560)
 
-        self.setAttribute(Qt.WA_TranslucentBackground)
 
         self.central_widget = QWidget()
         self.setCentralWidget(self.central_widget)
@@ -47,41 +44,18 @@ class AdminRegistrationWindow(QMainWindow):
         password = self.password_input.text().strip()
         confirm_password = self.confirm_password_input.text().strip()
         
-        if not username or not password:
-            QMessageBox.warning(self, "Error", "Username and password cannot be empty.")
-            return
-        
-        if password != confirm_password:
-            QMessageBox.warning(self, "Error", "Passwords do not match.")
-            return
-        
-        # Check if admin already exists
-        conn = get_connection()
-        c = conn.cursor()
-        c.execute("SELECT COUNT(*) FROM Admin")
-        if c.fetchone()[0] > 0:
-            QMessageBox.warning(self, "Error", "Admin account already exists.")
-            conn.close()
-            return
-        
-        # Hash password
-        hashed_password = hashlib.sha256(password.encode()).hexdigest()
-        
         try:
-            c.execute("INSERT INTO Admin (username, password) VALUES (?, ?)", (username, hashed_password))
-            conn.commit()
+            from app.controllers.auth_controller import register_admin
+            register_admin(username, password, confirm_password)
             QMessageBox.information(self, "Success", f"Admin account '{username}' created successfully!")
-            self._handle_back_to_login()  # Go back to login
+            self.close()  # Close and return to login
+        except ValueError as e:
+            QMessageBox.warning(self, "Error", str(e))
         except Exception as e:
-            QMessageBox.critical(self, "Error", f"Error creating admin account: {str(e)}")
-        finally:
-            conn.close()
+            QMessageBox.critical(self, "Error", str(e))
 
     def _handle_back_to_login(self):
         """Handle back to login link click"""
-        from .login_window import LoginWindow
-        self.login_window = LoginWindow()
-        self.login_window.show()
         self.close()
 
     def _build_ui(self):
@@ -154,29 +128,28 @@ class AdminRegistrationWindow(QMainWindow):
 
         card_layout.addLayout(back_layout)
 
+        h_layout = QHBoxLayout()
+        h_layout.addStretch()
+        h_layout.addWidget(self.card)
+        h_layout.addStretch()
+
         main_layout.addStretch()
-        main_layout.addWidget(self.card)
+        main_layout.addLayout(h_layout)
         main_layout.addStretch()
 
     def _apply_styles(self):
         self.setStyleSheet("""
         /* Dark Gradient Background */
         QMainWindow {
-            background: qlineargradient(
-                spread:pad,
-                x1:0, y1:0,
-                x2:1, y2:1,
-                stop:0 #0f2027,
-                stop:1 #203a43
-            );
+            background-color: black;
         }
 
-        /* Card */
         QFrame#card {
             background-color: rgba(25, 25, 25, 0.95);
             border-radius: 20px;
+            max-width: 420px;
         }
-
+                           
         /* Title */
         QLabel#title {
             font-size: 26px;
@@ -243,5 +216,5 @@ if __name__ == "__main__":
     import sys
     app = QApplication(sys.argv)
     window = AdminRegistrationWindow()
-    window.show()
+    window.showMaximized()
     sys.exit(app.exec())
