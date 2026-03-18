@@ -4,6 +4,7 @@ from PySide6.QtWidgets import (
     QWidget,
     QLabel,
     QLineEdit,
+    QComboBox,
     QPushButton,
     QVBoxLayout,
     QHBoxLayout,
@@ -123,6 +124,7 @@ class EmployeeWindow(QMainWindow):
         self._apply_styles()
         self._connect_signals()
         self._load_employees()
+        self._load_departments()
 
     def _connect_signals(self):
         """Connect button signals"""
@@ -179,6 +181,10 @@ class EmployeeWindow(QMainWindow):
         self.id_input.setPlaceholderText("Employee ID")
         self.id_input.setObjectName("input")
         form_layout.addWidget(self.id_input)
+
+        self.department_combo = QComboBox()
+        self.department_combo.setObjectName("input")
+        form_layout.addWidget(self.department_combo)
 
         button_layout = QHBoxLayout()
         self.add_button = QPushButton("Add Employee")
@@ -258,25 +264,51 @@ class EmployeeWindow(QMainWindow):
             from app.controllers.registration_controller import handle_get_employees
             employees = handle_get_employees()
             for emp in employees:
-                self.employee_list.addItem(f"{emp[1]} {emp[2]} - ID: {emp[0]}")
+                dept = emp[3] if len(emp) > 3 and emp[3] else "No Department"
+                self.employee_list.addItem(f"{emp[1]} {emp[2]} - ID: {emp[0]} ({dept})")
         except Exception as e:
             QMessageBox.warning(self, "Error", f"Failed to load employees: {str(e)}")
+
+    def _load_departments(self):
+        """Load departments into dropdown"""
+        self.department_combo.clear()
+        self.department_combo.addItem("Select Department", None)
+        try:
+            from app.database.db import get_connection
+            conn = get_connection()
+            cur = conn.cursor()
+            cur.execute("SELECT dept_ID, department_name FROM Department ORDER BY department_name")
+            for dept_id, name in cur.fetchall():
+                self.department_combo.addItem(name, dept_id)
+        except Exception as e:
+            QMessageBox.warning(self, "Error", f"Failed to load departments: {str(e)}")
+        finally:
+            try:
+                conn.close()
+            except Exception:
+                pass
 
     def _add_employee(self):
         """Add new employee"""
         name = self.name_input.text().strip()
         emp_id = self.id_input.text().strip()
+        dept_id = self.department_combo.currentData()
 
         if not name or not emp_id:
             QMessageBox.warning(self, "Error", "Please enter both name and ID")
             return
 
+        if dept_id is None:
+            QMessageBox.warning(self, "Error", "Please select a department")
+            return
+
         try:
             from app.controllers.registration_controller import handle_add_employee
-            handle_add_employee(name, emp_id)
+            handle_add_employee(name, emp_id, dept_id)
             QMessageBox.information(self, "Success", f"Employee {name} added successfully!")
             self.name_input.clear()
             self.id_input.clear()
+            self.department_combo.setCurrentIndex(0)
             self._load_employees()
 
             # Automatically start face capture for the new employee
@@ -301,7 +333,10 @@ class EmployeeWindow(QMainWindow):
 
         # Parse employee ID from text
         text = current_item.text()
-        emp_id = text.split("ID: ")[1]
+        emp_id = self._extract_employee_id(text)
+        if not emp_id:
+            QMessageBox.warning(self, "Error", "Could not determine employee ID")
+            return
 
         new_name = self.name_input.text().strip()
         if not new_name:
@@ -326,7 +361,10 @@ class EmployeeWindow(QMainWindow):
             return
 
         text = current_item.text()
-        emp_id = text.split("ID: ")[1]
+        emp_id = self._extract_employee_id(text)
+        if not emp_id:
+            QMessageBox.warning(self, "Error", "Could not determine employee ID")
+            return
 
         reply = QMessageBox.question(self, "Confirm Delete",
                                    f"Are you sure you want to delete employee {text}?",
@@ -361,7 +399,11 @@ class EmployeeWindow(QMainWindow):
             return
 
         text = current_item.text()
-        emp_id = int(text.split("ID: ")[1])
+        emp_id_text = self._extract_employee_id(text)
+        if not emp_id_text:
+            QMessageBox.warning(self, "Error", "Could not determine employee ID")
+            return
+        emp_id = int(emp_id_text)
 
         reply = QMessageBox.question(self, "Face Capture",
                                    f"Do you want to capture faces for {text}?",
@@ -420,6 +462,13 @@ class EmployeeWindow(QMainWindow):
         """Enable capture button when employee is selected"""
         self.capture_button.setEnabled(self.employee_list.currentItem() is not None)
 
+    def _extract_employee_id(self, text):
+        """Extract employee ID from list item text"""
+        try:
+            return text.split("ID: ")[1].split(" ")[0]
+        except Exception:
+            return None
+
     def _apply_styles(self):
         self.setStyleSheet("""
         /* Dark Gradient Background */
@@ -475,7 +524,7 @@ class EmployeeWindow(QMainWindow):
         }
 
         /* Inputs */
-        QLineEdit#input {
+        QLineEdit#input, QComboBox#input {
             padding: 12px;
             border-radius: 10px;
             border: 1px solid rgba(255, 255, 255, 0.08);
@@ -484,7 +533,7 @@ class EmployeeWindow(QMainWindow):
             color: #e8edf1;
         }
 
-        QLineEdit#input:focus {
+        QLineEdit#input:focus, QComboBox#input:focus {
             border: 2px solid #16c2ff;
             background-color: rgba(22, 26, 30, 0.95);
         }

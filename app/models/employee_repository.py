@@ -8,13 +8,18 @@ class EmployeeRepository:
         """Get all employees"""
         conn = get_connection()
         c = conn.cursor()
-        c.execute("SELECT employee_ID, fname, lname FROM Employee")
+        c.execute("""
+        SELECT e.employee_ID, e.fname, e.lname, d.department_name
+        FROM Employee e
+        LEFT JOIN Department d ON e.dept_ID = d.dept_ID
+        ORDER BY e.employee_ID
+        """)
         employees = c.fetchall()
         conn.close()
         return employees
 
     @staticmethod
-    def create_employee(employee_id, fname, lname, gender=1, age=25, email=None, password="password123"):
+    def create_employee(employee_id, fname, lname, gender=1, age=25, email=None, password="password123", dept_id=None):
         """Create new employee"""
         if email is None:
             email = f"{fname.lower()}@company.com"
@@ -22,9 +27,9 @@ class EmployeeRepository:
         conn = get_connection()
         c = conn.cursor()
         c.execute("""
-        INSERT INTO Employee (employee_ID, fname, lname, gender, age, emp_email, emp_pass)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-        """, (employee_id, fname, lname, gender, age, email, password))
+        INSERT INTO Employee (employee_ID, fname, lname, gender, age, emp_email, emp_pass, dept_ID)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """, (employee_id, fname, lname, gender, age, email, password, dept_id))
         conn.commit()
         conn.close()
         return employee_id

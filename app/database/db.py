@@ -12,6 +12,14 @@ def init_db():
     conn = sqlite3.connect(DATABASE_NAME)
     c = conn.cursor()
 
+    # Department table
+    c.execute("""
+    CREATE TABLE IF NOT EXISTS Department (
+        dept_ID INTEGER PRIMARY KEY AUTOINCREMENT,
+        department_name TEXT NOT NULL
+    )
+    """)
+
     # Employee table
     c.execute("""
     CREATE TABLE IF NOT EXISTS Employee (
@@ -22,7 +30,9 @@ def init_db():
         age INTEGER,
         contact_add TEXT,
         emp_email TEXT UNIQUE,
-        emp_pass TEXT
+        emp_pass TEXT,
+        dept_ID INTEGER,
+        FOREIGN KEY(dept_ID) REFERENCES Department(dept_ID)
     )
     """)
 
@@ -33,14 +43,6 @@ def init_db():
         username TEXT UNIQUE NOT NULL,
         password TEXT NOT NULL,
         created_at TEXT DEFAULT CURRENT_TIMESTAMP
-    )
-    """)
-
-    # Department table
-    c.execute("""
-    CREATE TABLE IF NOT EXISTS Department (
-        dept_ID INTEGER PRIMARY KEY AUTOINCREMENT,
-        department_name TEXT NOT NULL
     )
     """)
 
@@ -68,6 +70,12 @@ def init_db():
         FOREIGN KEY(job_ID) REFERENCES Job_Title(job_ID)
     )
     """)
+
+    # Ensure dept_ID exists on Employee for older databases
+    c.execute("PRAGMA table_info(Employee)")
+    columns = [row[1] for row in c.fetchall()]
+    if "dept_ID" not in columns:
+        c.execute("ALTER TABLE Employee ADD COLUMN dept_ID INTEGER")
 
     conn.commit()
     conn.close()

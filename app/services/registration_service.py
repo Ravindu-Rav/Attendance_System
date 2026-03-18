@@ -5,7 +5,7 @@ from app.models.employee_repository import EmployeeRepository
 from app.config.settings import DATASET_DIR, FACE_DETECTOR_MODEL
 
 
-def add_employee(employee_id, fname, lname, gender=1, age=25, email=None, password="password123"):
+def add_employee(employee_id, fname, lname, gender=1, age=25, email=None, password="password123", dept_id=None):
     """Add new employee to database
     
     Args:
@@ -20,7 +20,7 @@ def add_employee(employee_id, fname, lname, gender=1, age=25, email=None, passwo
     Returns:
         Employee ID
     """
-    return EmployeeRepository.create_employee(employee_id, fname, lname, gender, age, email, password)
+    return EmployeeRepository.create_employee(employee_id, fname, lname, gender, age, email, password, dept_id)
 
 
 def capture_faces(employee_id, num_samples=30):

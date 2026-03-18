@@ -25,7 +25,7 @@ def handle_add_employee(name, employee_id, department=None):
     lname = ' '.join(parts[1:]) if len(parts) > 1 else ''
     
     from app.services.registration_service import add_employee
-    return add_employee(int(employee_id), fname, lname)
+    return add_employee(int(employee_id), fname, lname, dept_id=department)
 
 
 def handle_capture_faces(employee_id, num_samples=50):
