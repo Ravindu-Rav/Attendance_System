@@ -20,21 +20,24 @@ Fast, reliable employee attendance tracking with a modern PySide6 desktop UI, re
 - Dashboard with attendance stats, trends, departments, and admin panel
 - Attendance records with CSV export
 
-## Demo Screens (Optional)
+## Demo Screens
 
-Add screenshots or GIFs to show:
-- Login and Admin Registration
-- Dashboard (Overview + Attendance)
-- Attendance Scanning
+🔐 Login and Admin Registration
+
+<p align="center"> <img src="images/login.png" alt="Login Screen" width="600"/> <img src="images/admin_register.png" alt="Admin Registration" width="600"/> </p>
+📊 Dashboard (Overview + Attendance)
+<p align="center"> <img src="images/dashboard_overview.png" alt="Dashboard Overview" width="600"/> <img src="images/dashboard_attendance.png" alt="Dashboard Attendance" width="600"/> </p>
+📷 Attendance Scanning
+<p align="center"> <img src="images/attendance_scan.png" alt="Attendance Scanning Demo" width="600"/> </p>
 
 ## Tech Stack
 
-| Layer | Tech |
-| --- | --- |
-| UI | PySide6 |
-| CV | OpenCV + OpenCV Contrib |
-| DB | SQLite |
-| Core | Python, NumPy |
+| Layer | Tech                    |
+| ----- | ----------------------- |
+| UI    | PySide6                 |
+| CV    | OpenCV + OpenCV Contrib |
+| DB    | SQLite                  |
+| Core  | Python, NumPy           |
 
 ## Project Structure
 
@@ -195,4 +198,3 @@ Key settings live in `app/config/settings.py`, including:
 ## License
 
 This project is for educational purposes.
-
