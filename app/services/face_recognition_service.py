@@ -67,10 +67,11 @@ def mark_attendance(employee_id):
     c = conn.cursor()
 
     today = datetime.now().strftime("%Y-%m-%d")
+    now_time = datetime.now().strftime("%H:%M:%S")
     c.execute("""
-    INSERT INTO On_Duty(employee_ID, duration, date)
-    VALUES(?, ?, ?)
-    """, (employee_id, 8, today))
+    INSERT INTO On_Duty(employee_ID, duration, date, in_time, status, early_leave_approved)
+    VALUES(?, ?, ?, ?, ?, ?)
+    """, (employee_id, 0, today, now_time, "IN", 0))
 
     conn.commit()
     conn.close()

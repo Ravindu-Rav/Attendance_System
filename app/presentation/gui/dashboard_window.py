@@ -25,7 +25,20 @@ from datetime import datetime, timedelta
 import csv
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-from app.database.db import get_connection
+from app.services.dashboard_service import (
+    get_dashboard_stats,
+    get_trend_counts,
+    get_departments_overview,
+    get_admins,
+    get_early_leave_requests,
+    approve_early_leave,
+    get_attendance_records,
+)
+from app.services.attendance_logic_service import (
+    calculate_worked_hours,
+    calculate_extra_hours,
+    calculate_late_hours,
+)
 
 
 class DashboardWindow(QMainWindow):
@@ -153,6 +166,12 @@ class DashboardWindow(QMainWindow):
         self.admins_value = QLabel("0")
         stats_grid.addWidget(self._stat_card("Admins", self.admins_value, "System users"), 1, 3)
 
+        self.extra_hours_value = QLabel("0.0h")
+        stats_grid.addWidget(self._stat_card("Extra Hours", self.extra_hours_value, "Today"), 2, 0)
+
+        self.late_hours_value = QLabel("0.0h")
+        stats_grid.addWidget(self._stat_card("Late Hours", self.late_hours_value, "Today"), 2, 1)
+
         layout.addLayout(stats_grid)
 
         content_layout = QHBoxLayout()
@@ -252,8 +271,10 @@ class DashboardWindow(QMainWindow):
 
         layout.addWidget(filter_frame)
 
-        self.attendance_table = QTableWidget(0, 4)
-        self.attendance_table.setHorizontalHeaderLabels(["Employee", "Job Title", "Date", "Duration"])
+        self.attendance_table = QTableWidget(0, 9)
+        self.attendance_table.setHorizontalHeaderLabels([
+            "Employee", "Job Title", "Date", "In Time", "Out Time", "Worked", "Late", "Extra", "Status"
+        ])
         self.attendance_table.setObjectName("dataTable")
         self.attendance_table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.attendance_table.horizontalHeader().setStretchLastSection(True)
@@ -321,6 +342,32 @@ class DashboardWindow(QMainWindow):
         self.admin_table.setSelectionBehavior(QTableWidget.SelectRows)
         self.admin_table.setSelectionMode(QTableWidget.SingleSelection)
         admin_layout.addWidget(self.admin_table)
+
+        self.approval_frame = QFrame()
+        self.approval_frame.setObjectName("sectionCard")
+        approval_layout = QVBoxLayout(self.approval_frame)
+        approval_layout.setContentsMargins(20, 18, 20, 18)
+        approval_layout.setSpacing(10)
+
+        approval_title = QLabel("Early Leave Approvals (Today)")
+        approval_title.setObjectName("sectionTitle")
+        approval_layout.addWidget(approval_title)
+
+        self.approval_table = QTableWidget(0, 4)
+        self.approval_table.setHorizontalHeaderLabels(["Employee", "In Time", "Worked", "Approved"])
+        self.approval_table.setObjectName("dataTable")
+        self.approval_table.horizontalHeader().setStretchLastSection(True)
+        self.approval_table.setEditTriggers(QTableWidget.NoEditTriggers)
+        self.approval_table.setSelectionBehavior(QTableWidget.SelectRows)
+        self.approval_table.setSelectionMode(QTableWidget.SingleSelection)
+        approval_layout.addWidget(self.approval_table)
+
+        self.approve_button = QPushButton("Approve Early Leave")
+        self.approve_button.setObjectName("actionButton")
+        self.approve_button.clicked.connect(self._approve_early_leave)
+        approval_layout.addWidget(self.approve_button, alignment=Qt.AlignRight)
+
+        layout.addWidget(self.approval_frame)
 
         self.logout_button = QPushButton("Logout")
         self.logout_button.setObjectName("logoutButton")
@@ -520,68 +567,35 @@ class DashboardWindow(QMainWindow):
 
     def _load_statistics(self):
         try:
-            conn = get_connection()
-            cur = conn.cursor()
+            stats = get_dashboard_stats()
 
-            cur.execute("SELECT COUNT(*) FROM Employee")
-            total_employees = cur.fetchone()[0]
+            self.total_employees_value.setText(str(stats["total_employees"]))
+            self.present_today_value.setText(str(stats["today_attendance"]))
+            self.absent_today_value.setText(str(stats["absent"]))
+            self.avg_duration_value.setText(f"{stats['avg_duration']:.1f}h")
+            self.departments_value.setText(str(stats["total_departments"]))
+            self.job_titles_value.setText(str(stats["total_job_titles"]))
+            self.admins_value.setText(str(stats["total_admins"]))
+            self.attendance_rate_value.setText(f"{stats['rate']}%")
+            self.extra_hours_value.setText(f"{stats['extra_hours_total']:.1f}h")
+            self.late_hours_value.setText(f"{stats['late_hours_total']:.1f}h")
 
-            cur.execute("SELECT COUNT(*) FROM Department")
-            total_departments = cur.fetchone()[0]
-
-            cur.execute("SELECT COUNT(*) FROM Job_Title")
-            total_job_titles = cur.fetchone()[0]
-
-            cur.execute("SELECT COUNT(*) FROM Admin")
-            total_admins = cur.fetchone()[0]
-
-            today = datetime.now().strftime("%Y-%m-%d")
-            cur.execute("SELECT COUNT(*), COALESCE(AVG(duration), 0) FROM On_Duty WHERE date = ?", (today,))
-            row = cur.fetchone()
-            today_attendance = row[0]
-            avg_duration = row[1] or 0
-
-            absent = max(total_employees - today_attendance, 0)
-            rate = 0
-            if total_employees:
-                rate = int((today_attendance / total_employees) * 100)
-
-            self.total_employees_value.setText(str(total_employees))
-            self.present_today_value.setText(str(today_attendance))
-            self.absent_today_value.setText(str(absent))
-            self.avg_duration_value.setText(f"{avg_duration:.1f}h")
-            self.departments_value.setText(str(total_departments))
-            self.job_titles_value.setText(str(total_job_titles))
-            self.admins_value.setText(str(total_admins))
-            self.attendance_rate_value.setText(f"{rate}%")
-
-            self._load_trend(cur, total_employees)
-            self._load_departments(cur)
-            self._load_admins(cur)
+            self._load_trend(stats["total_employees"])
+            self._load_departments()
+            self._load_admins()
+            self._load_early_leave_requests()
             self._load_attendance_by_date(initial=True)
-
-            conn.close()
 
         except Exception as e:
             print(f"Error loading dashboard: {e}")
 
-    def _load_trend(self, cur, total_employees):
+    def _load_trend(self, total_employees):
         for i in reversed(range(self.trend_rows_container.count())):
             item = self.trend_rows_container.takeAt(i)
             if item.widget():
                 item.widget().deleteLater()
 
-        start_date = datetime.now().date() - timedelta(days=6)
-        dates = [(start_date + timedelta(days=i)).strftime("%Y-%m-%d") for i in range(7)]
-        counts = {d: 0 for d in dates}
-
-        cur.execute(
-            "SELECT date, COUNT(*) FROM On_Duty WHERE date BETWEEN ? AND ? GROUP BY date",
-            (dates[0], dates[-1])
-        )
-        for date_str, count in cur.fetchall():
-            if date_str in counts:
-                counts[date_str] = count
+        dates, counts = get_trend_counts()
 
         max_value = max(counts.values()) if counts else 0
         max_value = max(max_value, total_employees)
@@ -606,23 +620,13 @@ class DashboardWindow(QMainWindow):
             row_layout.addWidget(bar)
             self.trend_rows_container.addWidget(row)
 
-    def _load_departments(self, cur):
+    def _load_departments(self):
         for i in reversed(range(self.dept_list_container.count())):
             item = self.dept_list_container.takeAt(i)
             if item.widget():
                 item.widget().deleteLater()
 
-        cur.execute(
-            """
-            SELECT d.department_name, COUNT(j.employee_ID) AS emp_count
-            FROM Department d
-            LEFT JOIN Job_Title j ON j.dept_ID = d.dept_ID
-            GROUP BY d.dept_ID
-            ORDER BY emp_count DESC, d.department_name ASC
-            LIMIT 6
-            """
-        )
-        rows = cur.fetchall()
+        rows = get_departments_overview()
         if not rows:
             empty = QLabel("No department data available")
             empty.setObjectName("rowLabel")
@@ -646,15 +650,8 @@ class DashboardWindow(QMainWindow):
             row_layout.addWidget(count_label)
             self.dept_list_container.addWidget(row)
 
-    def _load_admins(self, cur):
-        cur.execute(
-            """
-            SELECT admin_ID, username, created_at
-            FROM Admin
-            ORDER BY created_at DESC, admin_ID DESC
-            """
-        )
-        rows = cur.fetchall()
+    def _load_admins(self):
+        rows = get_admins()
         self.admin_table.setRowCount(0)
         for row_index, (admin_id, username, created_at) in enumerate(rows):
             self.admin_table.insertRow(row_index)
@@ -662,6 +659,19 @@ class DashboardWindow(QMainWindow):
             self.admin_table.setItem(row_index, 1, QTableWidgetItem(username))
             self.admin_table.setItem(row_index, 2, QTableWidgetItem(created_at))
         self.admin_count_label.setText(f"Admins: {len(rows)}")
+
+    def _load_early_leave_requests(self):
+        rows = get_early_leave_requests()
+        self.approval_table.setRowCount(0)
+        for row_index, (duty_id, full_name, in_time, approved) in enumerate(rows):
+            worked_hours = self._format_hours(calculate_worked_hours(in_time, datetime.now().strftime("%H:%M:%S")))
+            approved_text = "Yes" if approved else "No"
+            self.approval_table.insertRow(row_index)
+            self.approval_table.setItem(row_index, 0, QTableWidgetItem(full_name))
+            self.approval_table.setItem(row_index, 1, QTableWidgetItem(in_time or "-"))
+            self.approval_table.setItem(row_index, 2, QTableWidgetItem(worked_hours))
+            self.approval_table.setItem(row_index, 3, QTableWidgetItem(approved_text))
+            self.approval_table.setVerticalHeaderItem(row_index, QTableWidgetItem(str(duty_id)))
 
     def _load_attendance_by_date(self, initial=False):
         date_str = self.filter_date_input.date().toString("yyyy-MM-dd")
@@ -679,52 +689,26 @@ class DashboardWindow(QMainWindow):
 
     def _load_attendance_rows(self, date_str):
         try:
-            conn = get_connection()
-            cur = conn.cursor()
-            if date_str:
-                cur.execute(
-                    """
-                    SELECT e.fname || ' ' || e.lname AS full_name,
-                           COALESCE(j.job_title, 'N/A') AS job_title,
-                           o.date,
-                           COALESCE(o.duration, 0)
-                    FROM On_Duty o
-                    LEFT JOIN Employee e ON o.employee_ID = e.employee_ID
-                    LEFT JOIN Job_Title j ON o.job_ID = j.job_ID
-                    WHERE o.date = ?
-                    ORDER BY o.date DESC, o.duty_ID DESC
-                    """,
-                    (date_str,),
-                )
-            else:
-                cur.execute(
-                    """
-                    SELECT e.fname || ' ' || e.lname AS full_name,
-                           COALESCE(j.job_title, 'N/A') AS job_title,
-                           o.date,
-                           COALESCE(o.duration, 0)
-                    FROM On_Duty o
-                    LEFT JOIN Employee e ON o.employee_ID = e.employee_ID
-                    LEFT JOIN Job_Title j ON o.job_ID = j.job_ID
-                    ORDER BY o.date DESC, o.duty_ID DESC
-                    """
-                )
-
-            rows = cur.fetchall()
+            rows = get_attendance_records(date_str)
             self.attendance_table.setRowCount(0)
-            for row_index, (full_name, job_title, date_value, duration) in enumerate(rows):
+            for row_index, (full_name, job_title, date_value, in_time, out_time, duration, status) in enumerate(rows):
+                worked_hours = self._calc_duration_hours(duration, in_time, out_time)
+                worked_text = self._format_hours(worked_hours)
+                late_text = self._format_hours(calculate_late_hours(in_time))
+                extra_text = self._format_hours(calculate_extra_hours(out_time))
+                status_text = status or ("OUT" if out_time else "IN")
                 self.attendance_table.insertRow(row_index)
                 self.attendance_table.setItem(row_index, 0, QTableWidgetItem(full_name))
                 self.attendance_table.setItem(row_index, 1, QTableWidgetItem(job_title))
                 self.attendance_table.setItem(row_index, 2, QTableWidgetItem(date_value))
-                self.attendance_table.setItem(row_index, 3, QTableWidgetItem(f"{duration}h"))
+                self.attendance_table.setItem(row_index, 3, QTableWidgetItem(in_time or "-"))
+                self.attendance_table.setItem(row_index, 4, QTableWidgetItem(out_time or "-"))
+                self.attendance_table.setItem(row_index, 5, QTableWidgetItem(worked_text))
+                self.attendance_table.setItem(row_index, 6, QTableWidgetItem(late_text))
+                self.attendance_table.setItem(row_index, 7, QTableWidgetItem(extra_text))
+                self.attendance_table.setItem(row_index, 8, QTableWidgetItem(status_text))
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Failed to load attendance: {str(e)}")
-        finally:
-            try:
-                conn.close()
-            except Exception:
-                pass
 
     def _export_attendance_report(self):
         date_label = self.attendance_filter_date or "all"
@@ -739,51 +723,21 @@ class DashboardWindow(QMainWindow):
             return
 
         try:
-            conn = get_connection()
-            cur = conn.cursor()
-            if self.attendance_filter_date:
-                cur.execute(
-                    """
-                    SELECT e.fname || ' ' || e.lname AS full_name,
-                           COALESCE(j.job_title, 'N/A') AS job_title,
-                           o.date,
-                           COALESCE(o.duration, 0)
-                    FROM On_Duty o
-                    LEFT JOIN Employee e ON o.employee_ID = e.employee_ID
-                    LEFT JOIN Job_Title j ON o.job_ID = j.job_ID
-                    WHERE o.date = ?
-                    ORDER BY o.date DESC, o.duty_ID DESC
-                    """,
-                    (self.attendance_filter_date,),
-                )
-            else:
-                cur.execute(
-                    """
-                    SELECT e.fname || ' ' || e.lname AS full_name,
-                           COALESCE(j.job_title, 'N/A') AS job_title,
-                           o.date,
-                           COALESCE(o.duration, 0)
-                    FROM On_Duty o
-                    LEFT JOIN Employee e ON o.employee_ID = e.employee_ID
-                    LEFT JOIN Job_Title j ON o.job_ID = j.job_ID
-                    ORDER BY o.date DESC, o.duty_ID DESC
-                    """
-                )
-            rows = cur.fetchall()
+            rows = get_attendance_records(self.attendance_filter_date)
             with open(path, "w", newline="", encoding="utf-8") as csvfile:
                 writer = csv.writer(csvfile)
-                writer.writerow(["Employee", "Job Title", "Date", "Duration"])
-                for full_name, job_title, date_value, duration in rows:
-                    writer.writerow([full_name, job_title, date_value, duration])
+                writer.writerow(["Employee", "Job Title", "Date", "In Time", "Out Time", "Worked", "Late", "Extra", "Status"])
+                for full_name, job_title, date_value, in_time, out_time, duration, status in rows:
+                    worked_hours = self._calc_duration_hours(duration, in_time, out_time)
+                    worked_text = self._format_hours(worked_hours)
+                    late_text = self._format_hours(calculate_late_hours(in_time))
+                    extra_text = self._format_hours(calculate_extra_hours(out_time))
+                    status_text = status or ("OUT" if out_time else "IN")
+                    writer.writerow([full_name, job_title, date_value, in_time or "", out_time or "", worked_text, late_text, extra_text, status_text])
 
             QMessageBox.information(self, "Report Saved", f"Report saved to {path}")
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Failed to export report: {str(e)}")
-        finally:
-            try:
-                conn.close()
-            except Exception:
-                pass
 
     def _set_active_nav(self, button, index):
         for nav_button in (self.nav_overview, self.nav_attendance, self.nav_trends, self.nav_admin):
@@ -791,6 +745,39 @@ class DashboardWindow(QMainWindow):
             nav_button.style().unpolish(nav_button)
             nav_button.style().polish(nav_button)
         self.stack.setCurrentIndex(index)
+
+    def _approve_early_leave(self):
+        current_row = self.approval_table.currentRow()
+        if current_row < 0:
+            QMessageBox.warning(self, "Select Employee", "Please select a row to approve.")
+            return
+
+        duty_id_item = self.approval_table.verticalHeaderItem(current_row)
+        if not duty_id_item:
+            QMessageBox.warning(self, "Error", "Could not determine attendance record.")
+            return
+
+        duty_id = duty_id_item.text()
+        try:
+            approve_early_leave(duty_id)
+            self._load_statistics()
+            QMessageBox.information(self, "Approved", "Early leave approved.")
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Failed to approve: {str(e)}")
+
+    def _calc_duration_hours(self, duration, in_time, out_time):
+        if duration:
+            try:
+                return float(duration)
+            except Exception:
+                return 0.0
+        return calculate_worked_hours(in_time, out_time)
+
+    def _format_hours(self, hours):
+        try:
+            return f"{float(hours):.1f}h"
+        except Exception:
+            return "0.0h"
 
     def _open_attendance(self):
         from .attendance_window import AttendanceWindow

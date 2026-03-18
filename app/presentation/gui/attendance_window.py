@@ -12,6 +12,7 @@ from PySide6.QtWidgets import (
     QListWidgetItem,
     QMessageBox,
     QSizePolicy,
+    QTabWidget,
 )
 from PySide6.QtGui import QColor, QCursor, QImage, QPixmap
 from PySide6.QtCore import Qt, QTimer, QThread, Signal
@@ -23,7 +24,7 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 from app.services.training_service import train_model
 from app.services.face_recognition_service import get_employee_name
-from app.database.db import get_connection
+from app.services.attendance_logic_service import mark_attendance, get_today_attendance_list
 from datetime import datetime
 
 
@@ -32,8 +33,9 @@ class CameraThread(QThread):
     recognition_result = Signal(str, str)  # name, status
     model_status = Signal(str)  # human message about model status
 
-    def __init__(self):
+    def __init__(self, mode):
         super().__init__()
+        self.mode = mode
         self.running = False
         self.recognizer = None
         self.face_cascade = None
@@ -50,10 +52,9 @@ class CameraThread(QThread):
         self._last_recognized_time = None
         self._recognition_cooldown_seconds = 5
 
-        # Track who has been marked today so we avoid repeated DB checks and UI updates
-        self._marked_today = set()
-        self._marked_today_date = None
+        # Track who has been notified to avoid repeated popups
         self._already_notified_marked = set()
+        self._notified_date = None
     def try_load_model(self):
         """Attempt to load the trained model file.
 
@@ -137,12 +138,11 @@ class CameraThread(QThread):
 
         # Reset per-day tracking when the date changes
         today = datetime.now().strftime("%Y-%m-%d")
-        if self._marked_today_date != today:
-            self._marked_today_date = today
-            self._marked_today.clear()
+        if self._notified_date != today:
             self._already_notified_marked.clear()
             self._last_recognized_id = None
             self._last_recognized_time = None
+            self._notified_date = today
 
         for (x, y, w, h) in faces:
             cv2.rectangle(frame, (x, y), (x+w, y+h), (255, 0, 0), 2)
@@ -157,31 +157,25 @@ class CameraThread(QThread):
                         if employee:
                             name = f"{employee[0]} {employee[1]}"
 
-                            if employee_id in self._marked_today:
-                                # Already recorded for today; notify once and avoid spamming UI
-                                status = "Already Marked"
-                                if employee_id not in self._already_notified_marked:
-                                    self.recognition_result.emit(name, status)
-                                    self._already_notified_marked.add(employee_id)
+                            now = datetime.now()
+                            if (
+                                self._last_recognized_id == employee_id
+                                and self._last_recognized_time
+                                and (now - self._last_recognized_time).total_seconds() < self._recognition_cooldown_seconds
+                            ):
+                                status = "Recognizing..."
                             else:
-                                now = datetime.now()
-                                if (
-                                    self._last_recognized_id == employee_id
-                                    and self._last_recognized_time
-                                    and (now - self._last_recognized_time).total_seconds() < self._recognition_cooldown_seconds
-                                ):
-                                    status = "Recognizing..."
-                                else:
-                                    status = self._mark_attendance(employee_id)
-                                    self._last_recognized_id = employee_id
-                                    self._last_recognized_time = now
+                                status = mark_attendance(employee_id, self.mode)
+                                self._last_recognized_id = employee_id
+                                self._last_recognized_time = now
 
-                                    if status in ("Marked ✓", "Already Marked"):
-                                        self._marked_today.add(employee_id)
+                                if status in ("Already Checked Out", "No Approval"):
+                                    if employee_id in self._already_notified_marked:
+                                        return
+                                    self._already_notified_marked.add(employee_id)
 
-                                    self.recognition_result.emit(name, status)
+                                self.recognition_result.emit(name, status)
 
-                            # Draw on frame
                             cv2.putText(frame, f"{name} ({status})", (x, y-30),
                                        cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
                         else:
@@ -198,34 +192,6 @@ class CameraThread(QThread):
                 cv2.putText(frame, "Model Not Trained", (x, y-30),
                            cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 165, 0), 2)
 
-    def _mark_attendance(self, employee_id):
-        try:
-            conn = get_connection()
-            c = conn.cursor()
-
-            today = datetime.now().strftime("%Y-%m-%d")
-
-            # Check if already marked
-            c.execute("SELECT * FROM On_Duty WHERE employee_ID=? AND date=?",
-                     (employee_id, today))
-            if c.fetchone():
-                conn.close()
-                return "Already Marked"
-
-            # Mark attendance
-            c.execute("""
-                INSERT INTO On_Duty(employee_ID, duration, date)
-                VALUES(?, ?, ?)
-            """, (employee_id, 8, today))
-
-            conn.commit()
-            conn.close()
-            return "Marked ✓"
-
-        except Exception as e:
-            print(f"Attendance marking error: {e}")
-            return "Error"
-
     def stop(self):
         self.running = False
         self.wait()
@@ -240,6 +206,7 @@ class AttendanceWindow(QMainWindow):
 
         self.camera_thread = None
         self.is_scanning = False
+        self.scan_mode = None
 
         self.central_widget = QWidget()
         self.setCentralWidget(self.central_widget)
@@ -294,6 +261,40 @@ class AttendanceWindow(QMainWindow):
 
         card_layout.addLayout(header_layout)
 
+        # Check-in / Check-out Tabs
+        self.tab_widget = QTabWidget()
+        self.tab_widget.setObjectName("scanTabs")
+
+        checkin_tab = QWidget()
+        checkin_layout = QVBoxLayout(checkin_tab)
+        checkin_layout.setContentsMargins(12, 12, 12, 12)
+        checkin_layout.setSpacing(8)
+        checkin_label = QLabel("Check-In: Employees must arrive before 08:00.")
+        checkin_label.setObjectName("tabHint")
+        checkin_layout.addWidget(checkin_label)
+
+        self.checkin_button = QPushButton("Start Check-In Scanning")
+        self.checkin_button.setCursor(QCursor(Qt.PointingHandCursor))
+        self.checkin_button.setObjectName("markButton")
+        checkin_layout.addWidget(self.checkin_button)
+
+        checkout_tab = QWidget()
+        checkout_layout = QVBoxLayout(checkout_tab)
+        checkout_layout.setContentsMargins(12, 12, 12, 12)
+        checkout_layout.setSpacing(8)
+        checkout_label = QLabel("Check-Out: Employees leave after 16:00 or with approval.")
+        checkout_label.setObjectName("tabHint")
+        checkout_layout.addWidget(checkout_label)
+
+        self.checkout_button = QPushButton("Start Check-Out Scanning")
+        self.checkout_button.setCursor(QCursor(Qt.PointingHandCursor))
+        self.checkout_button.setObjectName("markButton")
+        checkout_layout.addWidget(self.checkout_button)
+
+        self.tab_widget.addTab(checkin_tab, "Check-In")
+        self.tab_widget.addTab(checkout_tab, "Check-Out")
+        card_layout.addWidget(self.tab_widget)
+
         # Camera Feed
         self.camera_label = QLabel("Camera not started")
         self.camera_label.setObjectName("cameraLabel")
@@ -301,12 +302,6 @@ class AttendanceWindow(QMainWindow):
         self.camera_label.setFixedHeight(300)
         self.camera_label.setStyleSheet("background-color: #2b2b2b; border-radius: 10px; color: #bbbbbb; font-size: 18px; border: 2px dashed #444;")
         card_layout.addWidget(self.camera_label)
-
-        # Mark Button
-        self.mark_button = QPushButton("Start Attendance Scanning")
-        self.mark_button.setCursor(QCursor(Qt.PointingHandCursor))
-        self.mark_button.setObjectName("markButton")
-        card_layout.addWidget(self.mark_button)
 
         # Today's Attendance List
         self.attendance_list = QListWidget()
@@ -329,22 +324,27 @@ class AttendanceWindow(QMainWindow):
 
     def _connect_signals(self):
         """Connect button signals"""
-        self.mark_button.clicked.connect(self._toggle_attendance_scanning)
+        self.checkin_button.clicked.connect(lambda: self._toggle_attendance_scanning("in"))
+        self.checkout_button.clicked.connect(lambda: self._toggle_attendance_scanning("out"))
 
-    def _toggle_attendance_scanning(self):
+    def _toggle_attendance_scanning(self, mode):
         """Start or stop attendance scanning"""
         if not self.is_scanning:
-            self._start_scanning()
+            self._start_scanning(mode)
+        elif self.scan_mode == mode:
+            self._stop_scanning()
         else:
             self._stop_scanning()
+            self._start_scanning(mode)
 
-    def _start_scanning(self):
+    def _start_scanning(self, mode):
         """Start camera and face recognition"""
         try:
             self.status_label.setText("Starting camera...")
             self.status_label.show()
 
-            self.camera_thread = CameraThread()
+            self.scan_mode = mode
+            self.camera_thread = CameraThread(mode)
             self.camera_thread.frame_ready.connect(self._update_camera_feed)
             self.camera_thread.recognition_result.connect(self._handle_recognition_result)
             self.camera_thread.model_status.connect(self._update_model_status)
@@ -353,8 +353,9 @@ class AttendanceWindow(QMainWindow):
             self.camera_thread.try_load_model()
 
             self.is_scanning = True
-            self.mark_button.setText("Stop Scanning")
-            self.mark_button.setStyleSheet("""
+            active_button = self.checkin_button if mode == "in" else self.checkout_button
+            active_button.setText("Stop Scanning")
+            active_button.setStyleSheet("""
                 QPushButton {
                     background-color: #dc3545;
                     color: white;
@@ -370,6 +371,10 @@ class AttendanceWindow(QMainWindow):
                     background-color: #bd2130;
                 }
             """)
+            if mode == "in":
+                self.checkout_button.setEnabled(False)
+            else:
+                self.checkin_button.setEnabled(False)
 
             # Check if model is loaded after a short delay
             QTimer.singleShot(1500, self._check_model_status)
@@ -450,28 +455,34 @@ class AttendanceWindow(QMainWindow):
             self.camera_thread = None
 
         self.is_scanning = False
-        self.mark_button.setText("Start Attendance Scanning")
+        self.scan_mode = None
+        self.checkin_button.setText("Start Check-In Scanning")
+        self.checkout_button.setText("Start Check-Out Scanning")
         self.camera_label.setText("Camera stopped")
         self._reset_mark_button_style()
+        self.checkin_button.setEnabled(True)
+        self.checkout_button.setEnabled(True)
 
     def _reset_mark_button_style(self):
         """Reset mark button to original style"""
-        self.mark_button.setStyleSheet("""
-            QPushButton#markButton {
-                background-color: #16c2ff;
-                color: #0b1216;
-                padding: 15px;
-                border-radius: 12px;
-                font-size: 18px;
-                font-weight: bold;
-            }
-            QPushButton#markButton:hover {
-                background-color: #0fb4e6;
-            }
-            QPushButton#markButton:pressed {
-                background-color: #0a9bc7;
-            }
-        """)
+        for button in (self.checkin_button, self.checkout_button):
+            button.setStyleSheet("""
+        QPushButton#markButton {
+            background-color: #16c2ff;
+            color: #0b1216;
+            padding: 16px 18px;
+            border-radius: 12px;
+            font-size: 18px;
+            font-weight: bold;
+            min-height: 46px;
+        }
+                QPushButton#markButton:hover {
+                    background-color: #0fb4e6;
+                }
+                QPushButton#markButton:pressed {
+                    background-color: #0a9bc7;
+                }
+            """)
 
     def _update_camera_feed(self, image):
         """Update camera feed display"""
@@ -492,15 +503,21 @@ class AttendanceWindow(QMainWindow):
         already_present = False
         for i in range(self.attendance_list.count()):
             if name in self.attendance_list.item(i).text():
+                self.attendance_list.item(i).setText(item_text)
                 already_present = True
                 break
 
         if not already_present:
             self.attendance_list.addItem(item_text)
 
-        # Show notification only when a new attendance mark is recorded
-        if status == "Marked ✓":
-            QMessageBox.information(self, "Attendance Marked", f"Attendance marked for {name}")
+        if status == "Checked In":
+            QMessageBox.information(self, "Attendance", f"{name} checked in")
+        elif status == "Checked Out":
+            QMessageBox.information(self, "Attendance", f"{name} checked out")
+        elif status == "No Approval":
+            QMessageBox.warning(self, "Approval Required", f"{name} needs approval to leave early")
+        elif status == "Not Checked In":
+            QMessageBox.warning(self, "Check-In Required", f"{name} must check in first")
 
     def _update_model_status(self, msg):
         """Update model status message from the camera thread"""
@@ -510,24 +527,13 @@ class AttendanceWindow(QMainWindow):
     def _load_today_attendance(self):
         """Load today's attendance records"""
         try:
-            conn = get_connection()
-            c = conn.cursor()
-
-            today = datetime.now().strftime("%Y-%m-%d")
-            c.execute("""
-                SELECT e.fname, e.lname, o.date
-                FROM On_Duty o
-                JOIN Employee e ON o.employee_ID = e.employee_ID
-                WHERE o.date = ?
-                ORDER BY o.date DESC
-            """, (today,))
-
             self.attendance_list.clear()
-            for row in c.fetchall():
+            for row in get_today_attendance_list():
                 name = f"{row[0]} {row[1]}"
-                self.attendance_list.addItem(f"{name} - Today")
-
-            conn.close()
+                in_time = row[2] or "-"
+                out_time = row[3] or "-"
+                status = row[4] or ("OUT" if row[3] else "IN")
+                self.attendance_list.addItem(f"{name} | In: {in_time} | Out: {out_time} | {status}")
 
         except Exception as e:
             QMessageBox.warning(self, "Database Error", f"Failed to load attendance: {str(e)}")
@@ -588,6 +594,33 @@ class AttendanceWindow(QMainWindow):
             color: #9aa6ac;
         }
 
+        QLabel#tabHint {
+            font-size: 12px;
+            color: #c2c9ce;
+        }
+
+        QTabWidget#scanTabs::pane {
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 10px;
+            padding: 6px;
+            background-color: rgba(16, 20, 24, 0.6);
+        }
+
+        QTabBar::tab {
+            background-color: rgba(16, 20, 24, 0.7);
+            color: #c2c9ce;
+            padding: 8px 14px;
+            border-top-left-radius: 8px;
+            border-top-right-radius: 8px;
+            margin-right: 4px;
+        }
+
+        QTabBar::tab:selected {
+            background-color: #16c2ff;
+            color: #0b1216;
+            font-weight: 600;
+        }
+
         /* Camera Label */
         QLabel#cameraLabel {
             background-color: rgba(16, 20, 24, 0.8);
@@ -601,9 +634,9 @@ class AttendanceWindow(QMainWindow):
         QPushButton#markButton {
             background-color: #16c2ff;
             color: #0b1216;
-            padding: 15px;
+            padding: 18px;
             border-radius: 12px;
-            font-size: 18px;
+            font-size: 15px;
             font-weight: bold;
         }
 

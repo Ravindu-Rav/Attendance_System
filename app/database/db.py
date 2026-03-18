@@ -66,6 +66,10 @@ def init_db():
         job_ID INTEGER,
         duration INTEGER,
         date TEXT,
+        in_time TEXT,
+        out_time TEXT,
+        status TEXT,
+        early_leave_approved INTEGER DEFAULT 0,
         FOREIGN KEY(employee_ID) REFERENCES Employee(employee_ID),
         FOREIGN KEY(job_ID) REFERENCES Job_Title(job_ID)
     )
@@ -76,6 +80,18 @@ def init_db():
     columns = [row[1] for row in c.fetchall()]
     if "dept_ID" not in columns:
         c.execute("ALTER TABLE Employee ADD COLUMN dept_ID INTEGER")
+
+    # Ensure On_Duty has time tracking columns for older databases
+    c.execute("PRAGMA table_info(On_Duty)")
+    duty_columns = {row[1] for row in c.fetchall()}
+    if "in_time" not in duty_columns:
+        c.execute("ALTER TABLE On_Duty ADD COLUMN in_time TEXT")
+    if "out_time" not in duty_columns:
+        c.execute("ALTER TABLE On_Duty ADD COLUMN out_time TEXT")
+    if "status" not in duty_columns:
+        c.execute("ALTER TABLE On_Duty ADD COLUMN status TEXT")
+    if "early_leave_approved" not in duty_columns:
+        c.execute("ALTER TABLE On_Duty ADD COLUMN early_leave_approved INTEGER DEFAULT 0")
 
     conn.commit()
     conn.close()
