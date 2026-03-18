@@ -270,10 +270,27 @@ class EmployeeWindow(QMainWindow):
         """Load departments into dropdown"""
         self.department_combo.clear()
         self.department_combo.addItem("Select Department", None)
+        default_departments = [
+            "Operations",
+            "HR",
+            "Finance",
+            "IT",
+            "Security",
+        ]
         try:
             from app.database.db import get_connection
             conn = get_connection()
             cur = conn.cursor()
+            cur.execute("SELECT dept_ID, department_name FROM Department")
+            rows = cur.fetchall()
+            existing_names = {name for _, name in rows}
+
+            # Insert hardcoded defaults if missing
+            for name in default_departments:
+                if name not in existing_names:
+                    cur.execute("INSERT INTO Department (department_name) VALUES (?)", (name,))
+            conn.commit()
+
             cur.execute("SELECT dept_ID, department_name FROM Department ORDER BY department_name")
             for dept_id, name in cur.fetchall():
                 self.department_combo.addItem(name, dept_id)
