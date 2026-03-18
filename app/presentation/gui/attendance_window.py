@@ -238,8 +238,6 @@ class AttendanceWindow(QMainWindow):
         self.setMinimumSize(600, 600)
         self.resize(600, 600)
 
-        self.setWindowState(Qt.WindowMaximized)
-
         self.camera_thread = None
         self.is_scanning = False
 
@@ -260,7 +258,6 @@ class AttendanceWindow(QMainWindow):
         self.card = QFrame()
         self.card.setObjectName("card")
         self.card.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
-        self.card.setMinimumWidth(900)
 
         # Drop shadow
         shadow = QGraphicsDropShadowEffect()

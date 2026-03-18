@@ -115,8 +115,6 @@ class EmployeeWindow(QMainWindow):
         self.setMinimumSize(350, 450)
         self.resize(420, 560)
 
-        self.setWindowState(Qt.WindowMaximized)
-
         self.central_widget = QWidget()
         self.setCentralWidget(self.central_widget)
 
@@ -143,7 +141,6 @@ class EmployeeWindow(QMainWindow):
         self.card = QFrame()
         self.card.setObjectName("card")
         self.card.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
-        self.card.setMinimumWidth(900)
 
         # Drop shadow
         shadow = QGraphicsDropShadowEffect()
