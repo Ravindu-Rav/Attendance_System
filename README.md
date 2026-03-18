@@ -1,24 +1,40 @@
 # Face Recognition Attendance System
 
-A desktop attendance system that uses face recognition to check employees in and out, built with Python, OpenCV, SQLite, and a PySide6 GUI.
+Fast, reliable employee attendance tracking with a modern PySide6 desktop UI, real-time face recognition, and SQLite storage.
 
-## Features
+---
 
-- Admin login and first-time admin registration
-- Employee management (add, edit, delete)
-- Face capture per employee with dataset storage
-- Model training (LBPH) and automatic model reload during scanning
+![Python](https://img.shields.io/badge/Python-3.x-blue)
+![OpenCV](https://img.shields.io/badge/OpenCV-4.x-green)
+![GUI](https://img.shields.io/badge/GUI-PySide6-2ea44f)
+![DB](https://img.shields.io/badge/DB-SQLite-0f5fff)
+
+---
+
+## Highlights
+
+- Secure admin login and first-time admin registration
+- Employee management with face capture per employee
+- LBPH model training with automatic reload during scanning
 - Check-in and check-out modes with early-leave approval flow
-- Dashboard with attendance stats, trends, and department overview
-- Attendance records table with CSV export
+- Dashboard with attendance stats, trends, departments, and admin panel
+- Attendance records with CSV export
+
+## Demo Screens (Optional)
+
+Add screenshots or GIFs to show:
+- Login and Admin Registration
+- Dashboard (Overview + Attendance)
+- Attendance Scanning
 
 ## Tech Stack
 
-- Python
-- OpenCV + OpenCV Contrib (LBPH face recognizer)
-- PySide6 (GUI)
-- SQLite
-- NumPy
+| Layer | Tech |
+| --- | --- |
+| UI | PySide6 |
+| CV | OpenCV + OpenCV Contrib |
+| DB | SQLite |
+| Core | Python, NumPy |
 
 ## Project Structure
 
@@ -58,13 +74,17 @@ run.py                          # GUI entry point
 requirements.txt
 ```
 
+---
+
 ## Prerequisites
 
 - Python (compatible with PySide6 6.7)
 - A working webcam
 - Windows, macOS, or Linux with OpenCV-compatible camera drivers
 
-## Installation
+---
+
+## Quick Start
 
 1. Clone the repository
 
@@ -103,6 +123,8 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
+---
+
 ## Running the App
 
 ### GUI (recommended)
@@ -111,7 +133,7 @@ pip install -r requirements.txt
 python run.py
 ```
 
-On first launch, use the "Create one" link on the login screen to register the first admin. After that, log in to access the main menu.
+On first launch, use the "Create one" link on the login screen to register the first admin.
 
 ### CLI (menu-based)
 
@@ -119,7 +141,9 @@ On first launch, use the "Create one" link on the login screen to register the f
 python app/main.py
 ```
 
-The CLI menu supports employee registration, model training, attendance marking, and admin registration. If PySide6 is installed, it also offers an option to launch the GUI.
+The CLI supports employee registration, model training, attendance marking, and admin registration. If PySide6 is installed, it also offers an option to launch the GUI.
+
+---
 
 ## Typical Workflow
 
@@ -129,6 +153,8 @@ The CLI menu supports employee registration, model training, attendance marking,
 4. Train the recognition model.
 5. Use Check-In / Check-Out scanning to mark attendance.
 
+---
+
 ## Attendance Rules (GUI)
 
 - Workday start: 08:00
@@ -136,11 +162,15 @@ The CLI menu supports employee registration, model training, attendance marking,
 - Check-out before completing 8 hours requires admin approval
 - Approvals are handled in the Dashboard > Admin panel
 
+---
+
 ## Data Storage
 
 - `attendance.db` stores employees, departments, attendance records, and admins.
 - `dataset/` stores face images per employee ID.
 - `models_storage/trainer.yml` stores the trained LBPH model.
+
+---
 
 ## Configuration
 
@@ -151,12 +181,16 @@ Key settings live in `app/config/settings.py`, including:
 - `FACE_RECOGNITION_CONFIDENCE_THRESHOLD`
 - `CAMERA_INDEX`
 
+---
+
 ## Troubleshooting
 
 - Camera not detected: make sure the webcam is connected and not in use by another app.
 - "Model not trained": capture faces for employees and run training.
 - Database locked: close other running instances of the app.
 - Import errors: ensure you run from the project root and install requirements.
+
+---
 
 ## License
 
