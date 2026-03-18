@@ -24,9 +24,9 @@ Fast, reliable employee attendance tracking with a modern PySide6 desktop UI, re
 
 🔐 Login and Admin Registration
 
-<p align="center"> <img src="images/login.png" alt="Login Screen" width="600"/> <img src="images/admin_register.png" alt="Admin Registration" width="600"/> </p>
+<p align="center"> <img src="images/login.png" alt="Login Screen" width="600"/></p>
 📊 Dashboard (Overview + Attendance)
-<p align="center"> <img src="images/dashboard_overview.png" alt="Dashboard Overview" width="600"/> <img src="images/dashboard_attendance.png" alt="Dashboard Attendance" width="600"/> </p>
+<p align="center"> <img src="images/dashboard_overview.png" alt="Dashboard Overview" width="600"/></p>
 📷 Attendance Scanning
 <p align="center"> <img src="images/attendance_scan.png" alt="Attendance Scanning Demo" width="600"/> </p>
 
